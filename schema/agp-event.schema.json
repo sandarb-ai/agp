@@ -1,0 +1,199 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sandarb.ai/agp/schema/agp-event.schema.json",
+  "title": "AGP Event",
+  "description": "AI Governance Proof (AGP) event schema — an open specification for capturing cryptographic proof of every AI agent governance action.",
+  "type": "object",
+  "required": [
+    "event_id",
+    "event_type",
+    "event_category",
+    "event_time",
+    "agent_id",
+    "governance_hash",
+    "trace_id"
+  ],
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for this event (UUID v4)."
+    },
+    "event_type": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9_]*$",
+      "description": "What happened. Uses UPPER_SNAKE_CASE RESOURCE_ACTION convention.",
+      "examples": [
+        "INJECT_SUCCESS",
+        "INJECT_DENIED",
+        "PROMPT_USED",
+        "PROMPT_DENIED",
+        "AGENT_REGISTERED",
+        "AGENT_APPROVED",
+        "AGENT_DEACTIVATED",
+        "CONTEXT_CREATED",
+        "CONTEXT_VERSION_APPROVED",
+        "CONTEXT_ARCHIVED",
+        "PROMPT_VERSION_CREATED",
+        "PROMPT_VERSION_APPROVED",
+        "GOVERNANCE_PROOF",
+        "POLICY_VIOLATION",
+        "A2A_CALL"
+      ]
+    },
+    "event_category": {
+      "type": "string",
+      "description": "Event grouping (e.g. inject, audit, agent-lifecycle, context-lifecycle, prompt-lifecycle, governance-proof, policy).",
+      "examples": [
+        "inject",
+        "audit",
+        "agent-lifecycle",
+        "context-lifecycle",
+        "prompt-lifecycle",
+        "governance-proof",
+        "policy"
+      ]
+    },
+    "event_time": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the governance action occurred (UTC, ISO 8601, millisecond precision)."
+    },
+
+    "agent_id": {
+      "type": "string",
+      "description": "The agent that triggered this governance action. Should follow SRN format: agent.<kebab-name>.",
+      "examples": ["agent.trading-bot-v2", "agent.customer-support"]
+    },
+    "agent_name": {
+      "type": "string",
+      "description": "Human-readable agent name.",
+      "default": ""
+    },
+    "org_id": {
+      "type": "string",
+      "description": "Organization the agent belongs to. Should follow SRN format: org.<kebab-name>.",
+      "default": "",
+      "examples": ["org.finco", "org.acme-corp"]
+    },
+    "org_name": {
+      "type": "string",
+      "description": "Human-readable organization name.",
+      "default": ""
+    },
+
+    "context_id": {
+      "type": "string",
+      "description": "ID of the context that was accessed or injected.",
+      "default": ""
+    },
+    "context_name": {
+      "type": "string",
+      "description": "Human-readable context name. Should follow SRN format: context.<kebab-name>.",
+      "default": "",
+      "examples": ["context.trading-limits", "context.eu-refund-policy"]
+    },
+    "version_id": {
+      "type": "string",
+      "description": "Specific version of the context that was used.",
+      "default": ""
+    },
+    "version_number": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Numeric version for ordering.",
+      "default": 0
+    },
+
+    "prompt_id": {
+      "type": "string",
+      "description": "ID of the prompt that was used.",
+      "default": ""
+    },
+    "prompt_name": {
+      "type": "string",
+      "description": "Human-readable prompt name. Should follow SRN format: prompt.<kebab-name>.",
+      "default": "",
+      "examples": ["prompt.customer-support-v3"]
+    },
+
+    "governance_hash": {
+      "type": "string",
+      "description": "SHA-256 hash of the governed content at the time of the action. This is the cryptographic proof."
+    },
+    "hash_type": {
+      "type": "string",
+      "description": "Hash algorithm used.",
+      "default": "sha256",
+      "examples": ["sha256", "sha384", "sha512"]
+    },
+    "trace_id": {
+      "type": "string",
+      "description": "Distributed trace ID for end-to-end correlation across systems. UUID v4, OpenTelemetry 32-char hex, or prefixed format.",
+      "examples": [
+        "550e8400-e29b-41d4-a716-446655440000",
+        "4bf92f3577b34da6a3ce929d0e0e4736",
+        "trace-550e8400-e29b-41d4-a716-446655440000"
+      ]
+    },
+    "data_classification": {
+      "type": "string",
+      "enum": ["public", "internal", "confidential", "restricted", ""],
+      "description": "Classification of the data involved. Four-tier model: public, internal, confidential, restricted.",
+      "default": ""
+    },
+
+    "template_rendered": {
+      "type": "boolean",
+      "description": "Whether the context was rendered with variables before delivery.",
+      "default": false
+    },
+
+    "denial_reason": {
+      "type": "string",
+      "description": "Why access was denied (human-readable). Present for DENIED events.",
+      "default": ""
+    },
+    "violation_type": {
+      "type": "string",
+      "description": "Category of policy violation.",
+      "default": ""
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["critical", "high", "medium", "low", ""],
+      "description": "Impact level for denial and violation events.",
+      "default": ""
+    },
+
+    "source_ip": {
+      "type": "string",
+      "description": "IP address of the requesting agent or service.",
+      "default": ""
+    },
+    "request_method": {
+      "type": "string",
+      "description": "HTTP method or protocol action that triggered the event.",
+      "default": "",
+      "examples": ["GET", "POST", "A2A", "MCP"]
+    },
+    "request_path": {
+      "type": "string",
+      "description": "API path or skill name.",
+      "default": ""
+    },
+
+    "ingested_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the event was received by the analytics store. Allows freshness measurement."
+    },
+
+    "metadata": {
+      "type": "string",
+      "description": "Extensible JSON string for domain-specific data. Implementations may add regulatory hooks, custom tags, or framework-specific context.",
+      "default": "{}"
+    }
+  },
+  "additionalProperties": false
+}

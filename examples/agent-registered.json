@@ -1,0 +1,38 @@
+{
+  "event_id": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+  "event_type": "AGENT_REGISTERED",
+  "event_category": "agent-lifecycle",
+  "event_time": "2025-01-15T09:00:00.000Z",
+
+  "agent_id": "agent.compliance-checker",
+  "agent_name": "Compliance Checker",
+  "org_id": "org.finco",
+  "org_name": "FinCo",
+
+  "context_id": "",
+  "context_name": "",
+  "version_id": "",
+  "version_number": 0,
+
+  "prompt_id": "",
+  "prompt_name": "",
+
+  "governance_hash": "",
+  "hash_type": "sha256",
+  "trace_id": "772fa622-g4bd-63f6-c938-668877662222",
+  "data_classification": "",
+
+  "template_rendered": false,
+
+  "denial_reason": "",
+  "violation_type": "",
+  "severity": "",
+
+  "source_ip": "10.0.1.10",
+  "request_method": "POST",
+  "request_path": "/api/agents",
+
+  "ingested_at": "2025-01-15T09:00:00.567Z",
+
+  "metadata": "{\"a2a_url\": \"https://compliance-checker.finco.internal/.well-known/agent.json\", \"owner_team\": \"risk-engineering\"}"
+}

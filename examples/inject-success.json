@@ -1,0 +1,38 @@
+{
+  "event_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "event_type": "INJECT_SUCCESS",
+  "event_category": "inject",
+  "event_time": "2025-01-15T14:30:00.123Z",
+
+  "agent_id": "agent.trading-bot-v2",
+  "agent_name": "Trading Bot",
+  "org_id": "org.finco",
+  "org_name": "FinCo",
+
+  "context_id": "ctx-001",
+  "context_name": "context.trading-limits",
+  "version_id": "ver-004",
+  "version_number": 4,
+
+  "prompt_id": "",
+  "prompt_name": "",
+
+  "governance_hash": "a3f2b8c1d4e5f67890abcdef1234567890abcdef1234567890abcdef12345678",
+  "hash_type": "sha256",
+  "trace_id": "550e8400-e29b-41d4-a716-446655440000",
+  "data_classification": "confidential",
+
+  "template_rendered": true,
+
+  "denial_reason": "",
+  "violation_type": "",
+  "severity": "",
+
+  "source_ip": "10.0.1.42",
+  "request_method": "GET",
+  "request_path": "/api/contexts/trading-limits/content",
+
+  "ingested_at": "2025-01-15T14:30:01.456Z",
+
+  "metadata": "{\"regulatory_hooks\": [\"FINRA\", \"SEC\"], \"delivery_latency_ms\": 12}"
+}
