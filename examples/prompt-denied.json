@@ -1,0 +1,32 @@
+{
+  "event_id": "2b3c4d5e-6f7a-8901-bcde-f23456789012",
+  "event_type": "PROMPT_DENIED",
+  "event_category": "audit",
+  "event_time": "2025-01-20T10:18:45.123Z",
+  "agent_id": "agent.inventory-tracker",
+  "agent_name": "Inventory Tracker",
+  "org_id": "org.summit-retail",
+  "org_name": "Summit Retail",
+  "context_id": "",
+  "context_name": "",
+  "version_id": "",
+  "version_number": 0,
+  "prompt_id": "prm-089",
+  "prompt_name": "prompt.fraud-detection-rules",
+  "governance_hash": "",
+  "hash_type": "sha256",
+  "trace_id": "d45ef678-a901-23bc-de45-fa67bc890123",
+  "data_classification": "restricted",
+  "template_rendered": false,
+  "denial_reason": "Agent agent.inventory-tracker is not linked to prompt prompt.fraud-detection-rules",
+  "violation_type": "ACCESS_CONTROL",
+  "severity": "medium",
+  "source_ip": "10.20.3.77",
+  "request_method": "GET",
+  "request_path": "/api/prompts/fraud-detection-rules/content",
+  "ingested_at": "2025-01-20T10:18:45.678Z",
+  "metadata": {
+    "requested_by_service": "inventory-mgmt-api",
+    "escalated": false
+  }
+}

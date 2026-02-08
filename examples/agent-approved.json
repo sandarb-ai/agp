@@ -1,0 +1,37 @@
+{
+  "event_id": "f1a2b3c4-d5e6-7890-abcd-ef0123456789",
+  "event_type": "AGENT_APPROVED",
+  "event_category": "agent-lifecycle",
+  "event_time": "2025-02-10T11:22:33.456Z",
+  "agent_id": "agent.loan-underwriter-v1",
+  "agent_name": "Loan Underwriter",
+  "org_id": "org.meridian-bank",
+  "org_name": "Meridian Bank",
+  "context_id": "",
+  "context_name": "",
+  "version_id": "",
+  "version_number": 0,
+  "prompt_id": "",
+  "prompt_name": "",
+  "governance_hash": "",
+  "hash_type": "sha256",
+  "trace_id": "a12bc345-d678-90ef-ab12-cd34ef567890",
+  "data_classification": "",
+  "template_rendered": false,
+  "denial_reason": "",
+  "violation_type": "",
+  "severity": "",
+  "source_ip": "10.10.5.20",
+  "request_method": "POST",
+  "request_path": "/api/agents/loan-underwriter-v1/approve",
+  "ingested_at": "2025-02-10T11:22:34.012Z",
+  "metadata": {
+    "approved_by": "admin@meridian-bank.com",
+    "approval_scope": [
+      "context.credit-scoring-rules",
+      "context.mortgage-rates-q1"
+    ],
+    "a2a_url": "https://loan-underwriter.meridian-bank.internal/.well-known/agent.json",
+    "owner_team": "lending-engineering"
+  }
+}

@@ -4,7 +4,8 @@
 
 AGP is not a product feature — it's a proposal for a common language that any platform, framework, or organization can adopt. We don't claim it's the final answer. We offer it as a starting point, and we welcome anyone who wants to help shape it.
 
-**Specification Version:** 0.1.0 (Draft)
+**Specification Version:** 0.2.0 (Draft)
+**Formal Specification:** [`spec/agp-spec.md`](./spec/agp-spec.md)
 **License:** Apache 2.0
 
 ---
@@ -31,7 +32,7 @@ AGP is our attempt — however small — to start that conversation. It's a stru
 
 4. **Flat and queryable.** AGP uses a single wide event table — no joins needed for governance queries. Designed for OLAP engines like ClickHouse, but works with any store that can hold JSON or columnar data.
 
-5. **Extensible, not rigid.** Required fields capture the essentials. The `metadata` field (JSON) allows any implementation to attach domain-specific data without breaking the schema.
+5. **Extensible, not rigid.** Required fields capture the essentials. The `metadata` object and `ext_`-prefixed extension fields allow any implementation to attach domain-specific data without breaking the schema.
 
 ---
 
@@ -94,7 +95,7 @@ An AGP event is a flat record with the following fields. Fields marked **Require
 | `request_path` | String | API path or skill name |
 | `template_rendered` | Boolean | Whether the context was rendered with variables before delivery |
 | `ingested_at` | DateTime (ms) | When the event was received by the analytics store (allows freshness measurement) |
-| `metadata` | JSON String | Extensible field for domain-specific data. Implementations may add regulatory hooks, custom tags, or framework-specific context here. |
+| `metadata` | JSON Object | Extensible object for domain-specific data. Implementations may add regulatory hooks, custom tags, or framework-specific context here. |
 
 ---
 
@@ -121,11 +122,11 @@ A common event format only works if the *values inside the events* follow shared
 
 These conventions are inspired by [OpenTelemetry Semantic Conventions](https://opentelemetry.io/docs/specs/semconv/) and adapted for AI governance.
 
-### Resource Naming (SRN)
+### Resource Naming (AGRN)
 
-Every governed resource — agents, contexts, and prompts — should follow a typed, kebab-case naming convention we call **Sandarb Resource Names (SRN)**. The format ensures names are globally unique, human-readable, and queryable.
+Every governed resource — agents, contexts, and prompts — should follow a typed, kebab-case naming convention we call **Agent Governance Resource Names (AGRN)**. The format ensures names are globally unique, human-readable, and queryable.
 
-| Resource | SRN Format | Example |
+| Resource | AGRN Format | Example |
 |----------|-----------|---------|
 | Agent | `agent.<kebab-name>` | `agent.trading-bot-v2` |
 | Context | `context.<kebab-name>` | `context.eu-refund-policy` |
@@ -221,7 +222,7 @@ A minimal AGP event when an agent successfully injects governed context:
 
   "severity": "",
   "template_rendered": true,
-  "metadata": "{\"regulatory_hooks\": [\"FINRA\", \"SEC\"]}"
+  "metadata": {"regulatory_hooks": ["FINRA", "SEC"]}
 }
 ```
 
@@ -249,7 +250,7 @@ def create_agp_event(agent_id, event_type, category, content, trace_id):
         "governance_hash": hashlib.sha256(content.encode()).hexdigest(),
         "hash_type": "sha256",
         "trace_id": trace_id,
-        "metadata": "{}"
+        "metadata": {}
     }
 ```
 

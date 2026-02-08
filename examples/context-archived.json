@@ -1,0 +1,38 @@
+{
+  "event_id": "5e6f7a8b-9c0d-1234-efab-c56789012345",
+  "event_type": "CONTEXT_ARCHIVED",
+  "event_category": "context-lifecycle",
+  "event_time": "2025-03-01T09:00:00.000Z",
+  "agent_id": "agent.governance-admin",
+  "agent_name": "Governance Admin",
+  "org_id": "org.atlas-capital",
+  "org_name": "Atlas Capital Management",
+  "context_id": "ctx-112",
+  "context_name": "context.aml-screening-rules-2024",
+  "version_id": "ver-005",
+  "version_number": 5,
+  "prompt_id": "",
+  "prompt_name": "",
+  "governance_hash": "e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8",
+  "hash_type": "sha256",
+  "trace_id": "a78bc901-d234-56ef-ab78-cd90ef123456",
+  "data_classification": "confidential",
+  "template_rendered": false,
+  "denial_reason": "",
+  "violation_type": "",
+  "severity": "",
+  "source_ip": "10.40.1.8",
+  "request_method": "POST",
+  "request_path": "/api/contexts/ctx-112/archive",
+  "ingested_at": "2025-03-01T09:00:01.123Z",
+  "metadata": {
+    "archived_by": "compliance-lead@atlas-capital.com",
+    "reason": "Superseded by context.aml-screening-rules-2025 (ctx-220)",
+    "replacement_context_id": "ctx-220",
+    "regulatory_hooks": [
+      "FinCEN",
+      "BSA"
+    ],
+    "retention_policy": "7-years"
+  }
+}

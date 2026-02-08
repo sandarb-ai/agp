@@ -1,0 +1,38 @@
+{
+  "event_id": "e2f3a4b5-c6d7-8901-efab-cd1234567890",
+  "event_type": "AGENT_DEACTIVATED",
+  "event_category": "agent-lifecycle",
+  "event_time": "2025-03-05T17:45:12.789Z",
+  "agent_id": "agent.claims-processor-v2",
+  "agent_name": "Claims Processor",
+  "org_id": "org.shield-insurance",
+  "org_name": "Shield Insurance",
+  "context_id": "",
+  "context_name": "",
+  "version_id": "",
+  "version_number": 0,
+  "prompt_id": "",
+  "prompt_name": "",
+  "governance_hash": "",
+  "hash_type": "sha256",
+  "trace_id": "b23cd456-e789-01fa-bc23-de45fa678901",
+  "data_classification": "",
+  "template_rendered": false,
+  "denial_reason": "Agent exceeded rate limits and accessed restricted PII contexts without authorization on 3 occasions",
+  "violation_type": "REPEATED_POLICY_VIOLATION",
+  "severity": "critical",
+  "source_ip": "172.16.3.44",
+  "request_method": "POST",
+  "request_path": "/api/agents/claims-processor-v2/deactivate",
+  "ingested_at": "2025-03-05T17:45:13.234Z",
+  "metadata": {
+    "deactivated_by": "security-ops@shield-insurance.com",
+    "violation_count": 3,
+    "last_violation": "2025-03-05T16:30:00.000Z",
+    "linked_violations": [
+      "d4e5f6a7-0001-0123-def0-234567890123",
+      "d4e5f6a7-0002-0123-def0-234567890123",
+      "d4e5f6a7-0003-0123-def0-234567890123"
+    ]
+  }
+}

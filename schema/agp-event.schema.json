@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://sandarb.ai/agp/schema/agp-event.schema.json",
+  "$id": "https://agp.sandarb.ai/schema/agp-event.schema.json",
   "title": "AGP Event",
-  "description": "AI Governance Proof (AGP) event schema — an open specification for capturing cryptographic proof of every AI agent governance action.",
+  "description": "AI Governance Proof (AGP) event schema v0.2.0 — an open specification for capturing cryptographic proof of every AI agent governance action.",
   "type": "object",
   "required": [
     "event_id",
@@ -62,7 +62,7 @@
 
     "agent_id": {
       "type": "string",
-      "description": "The agent that triggered this governance action. Should follow SRN format: agent.<kebab-name>.",
+      "description": "The agent that triggered this governance action. Should follow AGRN format: agent.<kebab-name>.",
       "examples": ["agent.trading-bot-v2", "agent.customer-support"]
     },
     "agent_name": {
@@ -72,7 +72,7 @@
     },
     "org_id": {
       "type": "string",
-      "description": "Organization the agent belongs to. Should follow SRN format: org.<kebab-name>.",
+      "description": "Organization the agent belongs to. Should follow AGRN format: org.<kebab-name>.",
       "default": "",
       "examples": ["org.finco", "org.acme-corp"]
     },
@@ -89,7 +89,7 @@
     },
     "context_name": {
       "type": "string",
-      "description": "Human-readable context name. Should follow SRN format: context.<kebab-name>.",
+      "description": "Human-readable context name. Should follow AGRN format: context.<kebab-name>.",
       "default": "",
       "examples": ["context.trading-limits", "context.eu-refund-policy"]
     },
@@ -112,14 +112,15 @@
     },
     "prompt_name": {
       "type": "string",
-      "description": "Human-readable prompt name. Should follow SRN format: prompt.<kebab-name>.",
+      "description": "Human-readable prompt name. Should follow AGRN format: prompt.<kebab-name>.",
       "default": "",
       "examples": ["prompt.customer-support-v3"]
     },
 
     "governance_hash": {
       "type": "string",
-      "description": "SHA-256 hash of the governed content at the time of the action. This is the cryptographic proof."
+      "description": "SHA-256 hash of the governed content at the time of the action. This is the cryptographic proof. Must be lowercase hexadecimal (64 characters) when present, or empty string for events without governed content.",
+      "pattern": "^([a-f0-9]{64})?$"
     },
     "hash_type": {
       "type": "string",
@@ -168,7 +169,7 @@
 
     "source_ip": {
       "type": "string",
-      "description": "IP address of the requesting agent or service.",
+      "description": "IP address of the requesting agent or service. May be omitted or anonymized for privacy.",
       "default": ""
     },
     "request_method": {
@@ -190,9 +191,15 @@
     },
 
     "metadata": {
-      "type": "string",
-      "description": "Extensible JSON string for domain-specific data. Implementations may add regulatory hooks, custom tags, or framework-specific context.",
-      "default": "{}"
+      "type": "object",
+      "description": "Extensible object for domain-specific data. Implementations may add regulatory hooks, custom tags, or framework-specific context.",
+      "default": {},
+      "additionalProperties": true
+    }
+  },
+  "patternProperties": {
+    "^ext_[a-z][a-z0-9_]*$": {
+      "description": "Extension fields. Implementations may add custom fields prefixed with ext_ without breaking schema validation."
     }
   },
   "additionalProperties": false

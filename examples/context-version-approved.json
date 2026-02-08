@@ -1,0 +1,37 @@
+{
+  "event_id": "4d5e6f7a-8b9c-0123-defa-b45678901234",
+  "event_type": "CONTEXT_VERSION_APPROVED",
+  "event_category": "context-lifecycle",
+  "event_time": "2025-02-14T14:00:00.000Z",
+  "agent_id": "agent.governance-admin",
+  "agent_name": "Governance Admin",
+  "org_id": "org.vanguard-ecommerce",
+  "org_name": "Vanguard E-Commerce",
+  "context_id": "ctx-305",
+  "context_name": "context.eu-refund-policy",
+  "version_id": "ver-003",
+  "version_number": 3,
+  "prompt_id": "",
+  "prompt_name": "",
+  "governance_hash": "d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7",
+  "hash_type": "sha256",
+  "trace_id": "f67ab890-c123-45de-fa67-bc89de012345",
+  "data_classification": "internal",
+  "template_rendered": false,
+  "denial_reason": "",
+  "violation_type": "",
+  "severity": "",
+  "source_ip": "10.30.2.5",
+  "request_method": "POST",
+  "request_path": "/api/contexts/ctx-305/versions/ver-003/approve",
+  "ingested_at": "2025-02-14T14:00:01.234Z",
+  "metadata": {
+    "approved_by": "legal-ops@vanguard-ecommerce.com",
+    "regulatory_hooks": [
+      "GDPR",
+      "EU-CRA"
+    ],
+    "changelog": "Updated 14-day return window to 30-day for digital goods per EU directive 2025/114",
+    "previous_version": "ver-002"
+  }
+}

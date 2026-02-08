@@ -1,0 +1,37 @@
+{
+  "event_id": "6f7a8b9c-0d1e-2345-fabc-d67890123456",
+  "event_type": "PROMPT_VERSION_CREATED",
+  "event_category": "prompt-lifecycle",
+  "event_time": "2025-01-28T16:20:00.000Z",
+  "agent_id": "agent.governance-admin",
+  "agent_name": "Governance Admin",
+  "org_id": "org.brightpath-edu",
+  "org_name": "BrightPath Education",
+  "context_id": "",
+  "context_name": "",
+  "version_id": "pver-002",
+  "version_number": 2,
+  "prompt_id": "prm-055",
+  "prompt_name": "prompt.student-advising-guidelines",
+  "governance_hash": "f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9",
+  "hash_type": "sha256",
+  "trace_id": "b89cd012-e345-67fa-bc89-de01fa234567",
+  "data_classification": "internal",
+  "template_rendered": false,
+  "denial_reason": "",
+  "violation_type": "",
+  "severity": "",
+  "source_ip": "192.168.5.30",
+  "request_method": "POST",
+  "request_path": "/api/prompts/prm-055/versions",
+  "ingested_at": "2025-01-28T16:20:01.456Z",
+  "metadata": {
+    "drafted_by": "ai-curriculum@brightpath-edu.com",
+    "changelog": "Added FERPA-compliant guardrails for student record references",
+    "token_count": 2340,
+    "status": "draft",
+    "regulatory_hooks": [
+      "FERPA"
+    ]
+  }
+}

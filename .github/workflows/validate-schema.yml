@@ -1,0 +1,58 @@
+name: Validate AGP Schema
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'schema/**'
+      - 'examples/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'schema/**'
+      - 'examples/**'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install ajv-cli
+        run: npm install -g ajv-cli ajv-formats
+
+      - name: Validate all examples against schema
+        run: |
+          echo "Validating AGP examples against schema..."
+          FAILED=0
+          for f in examples/*.json; do
+            if ajv validate -s schema/agp-event.schema.json -d "$f" --spec=draft2020 -c ajv-formats 2>&1; then
+              echo "  PASS: $f"
+            else
+              echo "  FAIL: $f"
+              FAILED=1
+            fi
+          done
+          if [ "$FAILED" -eq 1 ]; then
+            echo "Schema validation failed!"
+            exit 1
+          fi
+          echo "All examples valid."
+
+      - name: Validate schema is valid JSON Schema
+        run: |
+          node -e "
+            const schema = require('./schema/agp-event.schema.json');
+            const required = ['event_id','event_type','event_category','event_time','agent_id','governance_hash','trace_id'];
+            const missing = required.filter(f => !schema.required.includes(f));
+            if (missing.length) {
+              console.error('Missing required fields:', missing);
+              process.exit(1);
+            }
+            console.log('Schema structure valid. Required fields:', schema.required.length);
+            console.log('Properties:', Object.keys(schema.properties).length);
+          "
