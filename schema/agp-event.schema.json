@@ -93,15 +93,21 @@
       "default": "",
       "examples": ["context.trading-limits", "context.eu-refund-policy"]
     },
+    "context_version": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Version of the context at the time of this governance action. Point-in-time snapshot for audit.",
+      "default": 0
+    },
     "version_id": {
       "type": "string",
-      "description": "Specific version of the context that was used.",
+      "description": "Specific version ID (UUID) of the context that was used.",
       "default": ""
     },
     "version_number": {
       "type": "integer",
       "minimum": 0,
-      "description": "Numeric version for ordering.",
+      "description": "Numeric version for ordering (legacy, prefer context_version).",
       "default": 0
     },
 
@@ -115,6 +121,12 @@
       "description": "Human-readable prompt name. Should follow AGRN format: prompt.<kebab-name>.",
       "default": "",
       "examples": ["prompt.customer-support-v3"]
+    },
+    "prompt_version": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Version of the prompt at the time of this governance action. Point-in-time snapshot for audit.",
+      "default": 0
     },
 
     "governance_hash": {

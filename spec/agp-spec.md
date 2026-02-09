@@ -225,10 +225,12 @@ The following fields identify the governed context or prompt involved in the gov
 |---|---|---|---|
 | `context_id` | String | `""` | Unique identifier of the context that was accessed, injected, or governed. |
 | `context_name` | String | `""` | Human-readable name of the context. SHOULD follow AGRN format (`context.kebab-name`). |
-| `version_id` | String | `""` | Unique identifier of the specific version of the context that was used. |
+| `context_version` | Integer | `0` | Version of the context at the time of this governance action. This is a point-in-time snapshot — if the context is later updated, this field records the exact version that was used. MUST be a non-negative integer. |
+| `version_id` | String | `""` | Unique identifier (UUID) of the specific version of the context that was used. |
 | `version_number` | Integer | `0` | Numeric version for ordering. MUST be a non-negative integer. A value of `0` indicates that no version number is applicable. |
 | `prompt_id` | String | `""` | Unique identifier of the prompt that was used or governed. |
 | `prompt_name` | String | `""` | Human-readable name of the prompt. SHOULD follow AGRN format (`prompt.kebab-name`). |
+| `prompt_version` | Integer | `0` | Version of the prompt at the time of this governance action. This is a point-in-time snapshot — if the prompt is later updated, this field records the exact version that was used. MUST be a non-negative integer. |
 
 ### 5.4 Governance Proof Fields
 
