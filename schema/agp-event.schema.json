@@ -99,18 +99,6 @@
       "description": "Version of the context at the time of this governance action. Point-in-time snapshot for audit.",
       "default": 0
     },
-    "version_id": {
-      "type": "string",
-      "description": "Specific version ID (UUID) of the context that was used.",
-      "default": ""
-    },
-    "version_number": {
-      "type": "integer",
-      "minimum": 0,
-      "description": "Numeric version for ordering (legacy, prefer context_version).",
-      "default": 0
-    },
-
     "prompt_id": {
       "type": "string",
       "description": "ID of the prompt that was used.",

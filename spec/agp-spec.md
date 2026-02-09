@@ -226,8 +226,6 @@ The following fields identify the governed context or prompt involved in the gov
 | `context_id` | String | `""` | Unique identifier of the context that was accessed, injected, or governed. |
 | `context_name` | String | `""` | Human-readable name of the context. SHOULD follow AGRN format (`context.kebab-name`). |
 | `context_version` | Integer | `0` | Version of the context at the time of this governance action. This is a point-in-time snapshot — if the context is later updated, this field records the exact version that was used. MUST be a non-negative integer. |
-| `version_id` | String | `""` | Unique identifier (UUID) of the specific version of the context that was used. |
-| `version_number` | Integer | `0` | Numeric version for ordering. MUST be a non-negative integer. A value of `0` indicates that no version number is applicable. |
 | `prompt_id` | String | `""` | Unique identifier of the prompt that was used or governed. |
 | `prompt_name` | String | `""` | Human-readable name of the prompt. SHOULD follow AGRN format (`prompt.kebab-name`). |
 | `prompt_version` | Integer | `0` | Version of the prompt at the time of this governance action. This is a point-in-time snapshot — if the prompt is later updated, this field records the exact version that was used. MUST be a non-negative integer. |
@@ -297,7 +295,7 @@ The AGP specification defines 16 standard event types across 8 categories. Imple
 
 - **Emitted when:** An agent successfully receives governed context. Implementations MUST emit this event when a context injection request is fulfilled.
 - **Required fields:** All fields from Section 5.1.
-- **SHOULD be present:** `context_id`, `context_name`, `version_id`, `version_number`, `data_classification`, `governance_hash` (non-empty, computed over delivered content), `template_rendered`.
+- **SHOULD be present:** `context_id`, `context_name`, `context_version`, `data_classification`, `governance_hash` (non-empty, computed over delivered content), `template_rendered`.
 - **MAY be present:** `org_id`, `org_name`, `agent_name`, `source_ip`, `request_method`, `request_path`, `metadata`.
 
 #### INJECT_DENIED
@@ -305,7 +303,7 @@ The AGP specification defines 16 standard event types across 8 categories. Imple
 - **Emitted when:** An agent's request for governed context is denied by access control or policy enforcement. Implementations MUST emit this event when a context injection request is rejected.
 - **Required fields:** All fields from Section 5.1.
 - **SHOULD be present:** `context_id`, `context_name`, `data_classification`, `denial_reason`, `violation_type`, `severity`.
-- **Notes:** The `governance_hash` SHOULD be the empty string, as no content was delivered. The `version_id` and `version_number` MAY be empty or zero if the denial occurred before version resolution.
+- **Notes:** The `governance_hash` SHOULD be the empty string, as no content was delivered. The `context_version` and `prompt_version` MAY be zero if the denial occurred before version resolution.
 
 ### 6.2 Prompt Usage Events
 
@@ -316,7 +314,7 @@ The AGP specification defines 16 standard event types across 8 categories. Imple
 - **Emitted when:** An agent successfully retrieves and uses an approved prompt. Implementations MUST emit this event when a prompt is delivered to an agent.
 - **Required fields:** All fields from Section 5.1.
 - **SHOULD be present:** `prompt_id`, `prompt_name`, `governance_hash` (non-empty, computed over the prompt content), `data_classification`.
-- **MAY be present:** `version_id`, `version_number`, `org_id`, `agent_name`, `template_rendered`.
+- **MAY be present:** `prompt_version`, `org_id`, `agent_name`, `template_rendered`.
 
 #### PROMPT_DENIED
 
@@ -363,7 +361,7 @@ The AGP specification defines 16 standard event types across 8 categories. Imple
 
 - **Emitted when:** A new version of a governed context is approved for use. Implementations MUST emit this event when a context version transitions to an approved state.
 - **Required fields:** All fields from Section 5.1.
-- **SHOULD be present:** `context_id`, `context_name`, `version_id`, `version_number`, `governance_hash` (computed over the approved version content), `data_classification`.
+- **SHOULD be present:** `context_id`, `context_name`, `context_version`, `governance_hash` (computed over the approved version content), `data_classification`.
 
 #### CONTEXT_ARCHIVED
 
@@ -379,13 +377,13 @@ The AGP specification defines 16 standard event types across 8 categories. Imple
 
 - **Emitted when:** A new version of a governed prompt is created. Implementations MUST emit this event when a new prompt version is authored.
 - **Required fields:** All fields from Section 5.1.
-- **SHOULD be present:** `prompt_id`, `prompt_name`, `version_id`, `version_number`, `governance_hash` (computed over the prompt version content).
+- **SHOULD be present:** `prompt_id`, `prompt_name`, `prompt_version`, `governance_hash` (computed over the prompt version content).
 
 #### PROMPT_VERSION_APPROVED
 
 - **Emitted when:** A prompt version is approved for use. Implementations MUST emit this event when a prompt version transitions to an approved state.
 - **Required fields:** All fields from Section 5.1.
-- **SHOULD be present:** `prompt_id`, `prompt_name`, `version_id`, `version_number`, `governance_hash` (computed over the approved prompt content).
+- **SHOULD be present:** `prompt_id`, `prompt_name`, `prompt_version`, `governance_hash` (computed over the approved prompt content).
 
 ### 6.6 Governance Proof Events
 
@@ -407,7 +405,7 @@ The AGP specification defines 16 standard event types across 8 categories. Imple
 - **Emitted when:** A governance policy is violated. Implementations MUST emit this event when a policy violation is detected, whether or not the violating action was blocked.
 - **Required fields:** All fields from Section 5.1.
 - **SHOULD be present:** `denial_reason`, `violation_type`, `severity`, `data_classification`.
-- **MAY be present:** `context_id`, `context_name`, `prompt_id`, `prompt_name`, `version_id`, `version_number`.
+- **MAY be present:** `context_id`, `context_name`, `context_version`, `prompt_id`, `prompt_name`, `prompt_version`.
 - **Notes:** The `governance_hash` SHOULD contain the hash of the content involved in the violation, if available. The `severity` field SHOULD reflect the impact level as defined in Section 10.
 
 ### 6.8 Agent-to-Agent Events
@@ -769,11 +767,11 @@ The following is a fully annotated AGP event representing a successful context i
 
   "context_id": "ctx-001",
   "context_name": "context.trading-limits",
-  "version_id": "ver-004",
-  "version_number": 4,
+  "context_version": 4,
 
   "prompt_id": "",
   "prompt_name": "",
+  "prompt_version": 0,
 
   "governance_hash": "a3f2b8c1d4e5f67890abcdef1234567890abcdef1234567890abcdef12345678",
   "hash_type": "sha256",
@@ -810,8 +808,8 @@ The following is a fully annotated AGP event representing a successful context i
 | `org_name` | Human-readable organization name. |
 | `context_id` | Internal identifier for the context resource. |
 | `context_name` | AGRN identifying the context: `context.trading-limits`. |
-| `version_id` | Internal identifier for the specific version delivered. |
-| `version_number` | Numeric version (4th version of this context). |
+| `context_version` | Numeric version of the context at the time of delivery (4th version). |
+| `prompt_version` | Numeric version of the prompt (0 = no prompt involved). |
 | `prompt_id` / `prompt_name` | Empty -- this event does not involve a prompt. |
 | `governance_hash` | SHA-256 hash of the rendered context content at the time of delivery. |
 | `hash_type` | `sha256` -- the algorithm used (default). |

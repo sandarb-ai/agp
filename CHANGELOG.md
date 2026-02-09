@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - TTL extended from 2 years to 3 years
 - Engine recommendation changed from MergeTree to ReplicatedMergeTree for production deployments
 
+### Removed
+- `version_id` and `version_number` fields — superseded by `context_version` and `prompt_version`
+
 ## [0.2.0] - 2026-02-08
 
 ### Added

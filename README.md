@@ -73,10 +73,10 @@ An AGP event is a flat record with the following fields. Fields marked **Require
 |-------|------|-------------|
 | `context_id` | String | ID of the context that was accessed or injected |
 | `context_name` | String | Human-readable context name |
-| `version_id` | String | Specific version of the context that was used |
-| `version_number` | Integer | Numeric version for ordering |
+| `context_version` | Integer | Version of the context at the time of this governance action |
 | `prompt_id` | String | ID of the prompt that was used |
 | `prompt_name` | String | Human-readable prompt name |
+| `prompt_version` | Integer | Version of the prompt at the time of this governance action |
 
 ### Denial & Policy Violation
 
@@ -213,7 +213,8 @@ A minimal AGP event when an agent successfully injects governed context:
   "org_id": "org.finco",
 
   "context_name": "context.trading-limits",
-  "version_number": 4,
+  "context_version": 4,
+  "prompt_version": 0,
   "data_classification": "confidential",
 
   "governance_hash": "a3f2b8c1d4e5f678...sha256...",

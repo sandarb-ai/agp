@@ -11,11 +11,11 @@
 
   "context_id": "ctx-001",
   "context_name": "context.trading-limits",
-  "version_id": "",
-  "version_number": 0,
+  "context_version": 0,
 
   "prompt_id": "",
   "prompt_name": "",
+  "prompt_version": 0,
 
   "governance_hash": "",
   "hash_type": "sha256",
