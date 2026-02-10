@@ -1,6 +1,6 @@
 ---
 name: Bug Report
-about: Report a problem with the AGP schema or specification
+about: Report a problem with the AIGP schema or specification
 title: "[Bug] "
 labels: bug
 assignees: ''
@@ -12,9 +12,9 @@ A clear description of the bug.
 
 ## Schema or Spec Section
 
-Which part of the AGP specification is affected?
-- [ ] JSON Schema (`schema/agp-event.schema.json`)
-- [ ] Specification document (`spec/agp-spec.md`)
+Which part of the AIGP specification is affected?
+- [ ] JSON Schema (`schema/aigp-event.schema.json`)
+- [ ] Specification document (`spec/aigp-spec.md`)
 - [ ] Example events (`examples/`)
 - [ ] README or documentation
 

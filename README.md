@@ -1,18 +1,18 @@
-# AI Governance Proof (AGP)
+# AI Governance Proof (AIGP)
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
-[![Spec](https://img.shields.io/badge/Spec-v0.2.1-violet.svg)](./spec/agp-spec.md)
-[![Schema](https://img.shields.io/badge/JSON_Schema-valid-green.svg)](./schema/agp-event.schema.json)
+[![Spec](https://img.shields.io/badge/Spec-v0.2.1-violet.svg)](./spec/aigp-spec.md)
+[![Schema](https://img.shields.io/badge/JSON_Schema-valid-green.svg)](./schema/aigp-event.schema.json)
 
 **An open specification for capturing cryptographic proof of every AI agent governance action.**
 
-AGP is not a product feature — it's a proposal for a common language that any platform, framework, or organization can adopt. We don't claim it's the final answer. We offer it as a starting point, and we welcome anyone who wants to help shape it.
+AIGP is not a product feature — it's a proposal for a common language that any platform, framework, or organization can adopt. We don't claim it's the final answer. We offer it as a starting point, and we welcome anyone who wants to help shape it.
 
 ---
 
 ## Contents
 
-- [Why AGP?](#why-agp)
+- [Why AIGP?](#why-aigp)
 - [Quick Start](#quick-start)
 - [Core Schema](#core-schema)
 - [Event Types](#event-types)
@@ -24,7 +24,7 @@ AGP is not a product feature — it's a proposal for a common language that any 
 
 ---
 
-## Why AGP?
+## Why AIGP?
 
 AI agents are being deployed across every industry. They access company data, make decisions, and interact with customers. Regulators, auditors, and security teams all need to answer the same fundamental question:
 
@@ -32,18 +32,18 @@ AI agents are being deployed across every industry. They access company data, ma
 
 Today, every team answers this differently. Some grep through logs. Some build custom audit tables. Some don't track it at all. There is no shared format for what an AI governance proof should look like.
 
-AGP is a structured, cryptographic event format that captures **what happened**, **who did it**, **what data was involved**, and **whether it was allowed**.
+AIGP is a structured, cryptographic event format that captures **what happened**, **who did it**, **what data was involved**, and **whether it was allowed**.
 
 ---
 
 ## Quick Start
 
-An AGP event is a single JSON record that captures proof of one governance action. Any system can produce them — just emit JSON:
+An AIGP event is a single JSON record that captures proof of one governance action. Any system can produce them — just emit JSON:
 
 ```python
 import json, hashlib, uuid, datetime
 
-def create_agp_event(agent_id, context_name, content, trace_id):
+def create_aigp_event(agent_id, context_name, content, trace_id):
     return {
         "event_id": str(uuid.uuid4()),
         "event_type": "INJECT_SUCCESS",
@@ -57,17 +57,17 @@ def create_agp_event(agent_id, context_name, content, trace_id):
     }
 
 # Emit the event to your log, Kafka, or any store
-event = create_agp_event("agent.trading-bot", "context.trading-limits", "Max position: $10M", "trace-001")
+event = create_aigp_event("agent.trading-bot", "context.trading-limits", "Max position: $10M", "trace-001")
 print(json.dumps(event, indent=2))
 ```
 
-That's it. No SDK required, no vendor lock-in. If your event conforms to the schema, it's AGP-compliant.
+That's it. No SDK required, no vendor lock-in. If your event conforms to the schema, it's AIGP-compliant.
 
 ---
 
 ## Core Schema
 
-Every AGP event has these required fields. The full schema (25+ fields) is in the [formal specification](./spec/agp-spec.md).
+Every AIGP event has these required fields. The full schema (25+ fields) is in the [formal specification](./spec/aigp-spec.md).
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -81,7 +81,7 @@ Every AGP event has these required fields. The full schema (25+ fields) is in th
 
 Optional but recommended: `context_name`, `context_version`, `prompt_name`, `prompt_version`, `data_classification`, `org_id`, `denial_reason`, `severity`, `metadata`.
 
-> **Full schema:** [`spec/agp-spec.md`](./spec/agp-spec.md) | **JSON Schema:** [`schema/agp-event.schema.json`](./schema/agp-event.schema.json)
+> **Full schema:** [`spec/aigp-spec.md`](./spec/aigp-spec.md) | **JSON Schema:** [`schema/aigp-event.schema.json`](./schema/aigp-event.schema.json)
 
 ### Design Principles
 
@@ -95,7 +95,7 @@ Optional but recommended: `context_name`, `context_version`, `prompt_name`, `pro
 
 ## Event Types
 
-AGP defines 16 event types across 7 categories. Implementations may extend these using the same `RESOURCE_ACTION` naming convention.
+AIGP defines 16 event types across 7 categories. Implementations may extend these using the same `RESOURCE_ACTION` naming convention.
 
 | Category | Event Types | When emitted |
 |----------|------------|--------------|
@@ -112,7 +112,7 @@ AGP defines 16 event types across 7 categories. Implementations may extend these
 
 ## Use Cases
 
-AGP is designed to work across industries where AI agents handle sensitive data or regulated processes:
+AIGP is designed to work across industries where AI agents handle sensitive data or regulated processes:
 
 - **Financial Services** — Prove trading agents only accessed approved limits and MNPI controls were enforced (SEC, FINRA)
 - **Healthcare** — Audit that patient-facing agents used HIPAA-compliant consent rules and PHI access was minimum-necessary
@@ -189,9 +189,9 @@ More examples: [`examples/`](./examples/) — including healthcare (HIPAA), fina
 
 ## Reference Implementation
 
-[Sandarb](https://sandarb.ai) is the first reference implementation of AGP. It produces AGP events across every integration path (A2A, MCP, REST API) and streams them through Kafka and ClickHouse for real-time governance analytics.
+[Sandarb](https://sandarb.ai) is the first reference implementation of AIGP. It produces AIGP events across every integration path (A2A, MCP, REST API) and streams them through Kafka and ClickHouse for real-time governance analytics.
 
-But AGP doesn't require Sandarb. Any platform that produces events conforming to the schema is AGP-compliant. The format is deliberately simple — a JSON object with well-defined fields — so adoption is a low barrier.
+But AIGP doesn't require Sandarb. Any platform that produces events conforming to the schema is AIGP-compliant. The format is deliberately simple — a JSON object with well-defined fields — so adoption is a low barrier.
 
 ---
 
@@ -201,22 +201,22 @@ We don't have all the answers. AI governance is a new field, and the right forma
 
 - **Use it and tell us what's missing.** If the schema doesn't capture something your regulators need, that's exactly the feedback we want.
 - **Propose new event types.** The 16 standard types cover what we've seen so far. Healthcare, autonomous vehicles, and other domains will have governance actions we haven't imagined.
-- **Challenge the design.** If events should be signed, or `governance_hash` should use a Merkle tree, or the schema should be nested — [open an issue](https://github.com/sandarb-ai/agp/issues).
-- **Build your own implementation.** AGP is Apache 2.0. Build a Go producer, a Rust consumer, a Spark connector. The more implementations, the more useful the format.
+- **Challenge the design.** If events should be signed, or `governance_hash` should use a Merkle tree, or the schema should be nested — [open an issue](https://github.com/sandarb-ai/aigp/issues).
+- **Build your own implementation.** AIGP is Apache 2.0. Build a Go producer, a Rust consumer, a Spark connector. The more implementations, the more useful the format.
 
 ### Resources
 
 | Resource | Link |
 |----------|------|
-| Formal Specification | [`spec/agp-spec.md`](./spec/agp-spec.md) |
-| JSON Schema | [`schema/agp-event.schema.json`](./schema/agp-event.schema.json) |
+| Formal Specification | [`spec/aigp-spec.md`](./spec/aigp-spec.md) |
+| JSON Schema | [`schema/aigp-event.schema.json`](./schema/aigp-event.schema.json) |
 | Changelog | [`CHANGELOG.md`](./CHANGELOG.md) |
 | Example Events | [`examples/`](./examples/) |
-| Issues | [github.com/sandarb-ai/agp/issues](https://github.com/sandarb-ai/agp/issues) |
-| Discussions | [github.com/sandarb-ai/agp/discussions](https://github.com/sandarb-ai/agp/discussions) |
-| AGP on the Web | [sandarb.ai/agp](https://sandarb.ai/agp) |
+| Issues | [github.com/sandarb-ai/aigp/issues](https://github.com/sandarb-ai/aigp/issues) |
+| Discussions | [github.com/sandarb-ai/aigp/discussions](https://github.com/sandarb-ai/aigp/discussions) |
+| AIGP on the Web | [sandarb.ai/aigp](https://sandarb.ai/aigp) |
 | Sandarb Platform | [sandarb.ai](https://sandarb.ai) |
 
 ---
 
-AI governance is too important to be owned by any single company. We started AGP because we needed it for [Sandarb](https://sandarb.ai), and we're sharing it because we believe the industry needs a common language. This is a small step. We hope others will take the next ones with us.
+AI governance is too important to be owned by any single company. We started AIGP because we needed it for [Sandarb](https://sandarb.ai), and we're sharing it because we believe the industry needs a common language. This is a small step. We hope others will take the next ones with us.

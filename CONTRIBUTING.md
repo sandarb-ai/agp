@@ -1,6 +1,6 @@
-# Contributing to AGP
+# Contributing to AIGP
 
-Thank you for your interest in contributing to the AI Governance Proof (AGP) specification. AI governance is a new field, and we believe the right format will emerge from real-world use across different industries, regulatory regimes, and agent architectures.
+Thank you for your interest in contributing to the AI Governance Proof (AIGP) specification. AI governance is a new field, and we believe the right format will emerge from real-world use across different industries, regulatory regimes, and agent architectures.
 
 We don't have all the answers. Your perspective — whether you're a regulator, an engineer, a compliance officer, or someone building AI agents — is valuable.
 
@@ -8,7 +8,7 @@ We don't have all the answers. Your perspective — whether you're a regulator, 
 
 ### Use it and tell us what's missing
 
-If you implement AGP and find the schema doesn't capture something your regulators need, that's exactly the feedback we want. Open an issue describing:
+If you implement AIGP and find the schema doesn't capture something your regulators need, that's exactly the feedback we want. Open an issue describing:
 
 - What governance action you needed to capture
 - What field or event type was missing
@@ -29,7 +29,7 @@ If you think the schema should be nested instead of flat, or that `governance_ha
 
 ### Build your own implementation
 
-AGP is Apache 2.0 licensed. Build a Go producer, a Rust consumer, a Spark connector. The more implementations exist, the more useful the format becomes. If you build one, let us know and we'll link to it from the README.
+AIGP is Apache 2.0 licensed. Build a Go producer, a Rust consumer, a Spark connector. The more implementations exist, the more useful the format becomes. If you build one, let us know and we'll link to it from the README.
 
 ## Pull Request Process
 
@@ -41,7 +41,7 @@ AGP is Apache 2.0 licensed. Build a Go producer, a Rust consumer, a Spark connec
 
 ## Schema Changes
 
-Changes to the AGP event schema (`schema/agp-event.schema.json`) require:
+Changes to the AIGP event schema (`schema/aigp-event.schema.json`) require:
 
 - A clear rationale for why the change is needed
 - Backward compatibility analysis (can existing events still validate?)
@@ -54,6 +54,6 @@ Be respectful. Be constructive. Remember that everyone here is trying to solve a
 
 ## Questions?
 
-- [Open an Issue](https://github.com/sandarb-ai/agp/issues)
-- [Start a Discussion](https://github.com/sandarb-ai/agp/discussions)
-- Visit [sandarb.ai/agp](https://sandarb.ai/agp) for the web version of the specification
+- [Open an Issue](https://github.com/sandarb-ai/aigp/issues)
+- [Start a Discussion](https://github.com/sandarb-ai/aigp/discussions)
+- Visit [sandarb.ai/aigp](https://sandarb.ai/aigp) for the web version of the specification

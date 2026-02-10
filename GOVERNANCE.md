@@ -1,6 +1,6 @@
-# AGP Governance
+# AIGP Governance
 
-This document describes how the **Audit Governance Protocol (AGP)** specification is governed. AGP is an open specification licensed under the [Apache License 2.0](LICENSE).
+This document describes how the **Audit Governance Protocol (AIGP)** specification is governed. AIGP is an open specification licensed under the [Apache License 2.0](LICENSE).
 
 ## Principles
 
@@ -11,17 +11,17 @@ This document describes how the **Audit Governance Protocol (AGP)** specificatio
 
 ## Decision-Making
 
-AGP uses a **lazy consensus** model:
+AIGP uses a **lazy consensus** model:
 
 - **Minor changes** (typos, clarifications, editorial fixes) are merged after one approving review with no objections within 72 hours.
-- **Specification changes** (new event types, schema modifications, behavioral requirements) require a formal review process through an AGP Enhancement Proposal (AEP).
+- **Specification changes** (new event types, schema modifications, behavioral requirements) require a formal review process through an AIGP Enhancement Proposal (AEP).
 - **Breaking changes** require unanimous approval from active maintainers and a minimum 14-day review period.
 
 Silence is interpreted as agreement for minor changes. For spec changes, explicit approval from at least two maintainers is required.
 
-## AGP Enhancement Proposals (AEPs)
+## AIGP Enhancement Proposals (AEPs)
 
-An **AEP** is the formal mechanism for proposing changes to the AGP specification. AEPs are used for:
+An **AEP** is the formal mechanism for proposing changes to the AIGP specification. AEPs are used for:
 
 - Adding or modifying event types
 - Changing the JSON Schema
@@ -39,7 +39,7 @@ An **AEP** is the formal mechanism for proposing changes to the AGP specificatio
    - Example events demonstrating the change
 3. **Review** -- The AEP enters a minimum 7-day review period. All community members are encouraged to review and comment.
 4. **Revise** -- Address feedback and update the proposal as needed.
-5. **Accept or Reject** -- Maintainers make a final decision based on community feedback, technical merit, and alignment with AGP principles.
+5. **Accept or Reject** -- Maintainers make a final decision based on community feedback, technical merit, and alignment with AIGP principles.
 
 ### AEP States
 
@@ -54,7 +54,7 @@ An **AEP** is the formal mechanism for proposing changes to the AGP specificatio
 
 ## Versioning
 
-AGP uses two versioning schemes:
+AIGP uses two versioning schemes:
 
 ### Schema Versioning (SemVer)
 
@@ -85,7 +85,7 @@ Specification releases follow a three-stage process:
 
 > **Note:** Working groups have not yet been formed. This section is a placeholder for future governance structure.
 
-As the AGP community grows, we anticipate forming working groups to focus on specific areas:
+As the AIGP community grows, we anticipate forming working groups to focus on specific areas:
 
 - **Schema Working Group** -- Responsible for the JSON Schema definition and validation tooling.
 - **Events Working Group** -- Responsible for defining and maintaining the standard event type taxonomy.

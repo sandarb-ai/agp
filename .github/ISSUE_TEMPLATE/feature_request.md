@@ -23,7 +23,7 @@ Describe the change you'd like to see:
 
 ## Example Event
 
-Provide a sample AGP event demonstrating the feature:
+Provide a sample AIGP event demonstrating the feature:
 
 ```json
 {
@@ -35,7 +35,7 @@ Provide a sample AGP event demonstrating the feature:
 
 ## Backward Compatibility
 
-Will this change break existing AGP events?
+Will this change break existing AIGP events?
 - [ ] Yes (describe migration path)
 - [ ] No (additive change)
 

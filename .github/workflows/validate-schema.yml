@@ -1,4 +1,4 @@
-name: Validate AGP Schema
+name: Validate AIGP Schema
 
 on:
   push:
@@ -27,10 +27,10 @@ jobs:
 
       - name: Validate all examples against schema
         run: |
-          echo "Validating AGP examples against schema..."
+          echo "Validating AIGP examples against schema..."
           FAILED=0
           for f in examples/*.json; do
-            if ajv validate -s schema/agp-event.schema.json -d "$f" --spec=draft2020 -c ajv-formats 2>&1; then
+            if ajv validate -s schema/aigp-event.schema.json -d "$f" --spec=draft2020 -c ajv-formats 2>&1; then
               echo "  PASS: $f"
             else
               echo "  FAIL: $f"
@@ -46,7 +46,7 @@ jobs:
       - name: Validate schema is valid JSON Schema
         run: |
           node -e "
-            const schema = require('./schema/agp-event.schema.json');
+            const schema = require('./schema/aigp-event.schema.json');
             const required = ['event_id','event_type','event_category','event_time','agent_id','governance_hash','trace_id'];
             const missing = required.filter(f => !schema.required.includes(f));
             if (missing.length) {

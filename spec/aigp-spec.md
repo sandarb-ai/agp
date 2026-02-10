@@ -1,20 +1,20 @@
-# AI Governance Proof (AGP) Specification
+# AI Governance Proof (AIGP) Specification
 
 **Version:** 0.2.0 (Draft)
 
 **Status:** Draft
 
-**Editors:** AGP Community
+**Editors:** AIGP Community
 
 **License:** Apache 2.0
 
-**Latest published version:** https://github.com/sandarb-ai/agp
+**Latest published version:** https://github.com/sandarb-ai/aigp
 
 ---
 
 ## Abstract
 
-The AI Governance Proof (AGP) specification defines a structured, transport-agnostic event format for capturing cryptographic proof of governance actions performed by or upon AI agents. AGP events provide a tamper-evident audit trail that records what happened, which agent acted, what data was involved, and whether the action was permitted. This specification establishes the required and optional fields, event types, naming conventions, hash computation rules, and conformance levels that implementations MUST follow to produce interoperable governance records.
+The AI Governance Proof (AIGP) specification defines a structured, transport-agnostic event format for capturing cryptographic proof of governance actions performed by or upon AI agents. AIGP events provide a tamper-evident audit trail that records what happened, which agent acted, what data was involved, and whether the action was permitted. This specification establishes the required and optional fields, event types, naming conventions, hash computation rules, and conformance levels that implementations MUST follow to produce interoperable governance records.
 
 ---
 
@@ -36,7 +36,7 @@ Future versions of this specification may introduce breaking changes. Implemente
 - [2. Notational Conventions](#2-notational-conventions)
 - [3. Terminology](#3-terminology)
 - [4. Design Principles](#4-design-principles)
-- [5. AGP Event Structure](#5-agp-event-structure)
+- [5. AIGP Event Structure](#5-aigp-event-structure)
   - [5.1 Required Fields](#51-required-fields)
   - [5.2 Agent and Organization Fields](#52-agent-and-organization-fields)
   - [5.3 Context and Prompt Fields](#53-context-and-prompt-fields)
@@ -84,7 +84,7 @@ Today, governance evidence is captured inconsistently. Some organizations search
 
 ### 1.2 Motivation
 
-The AGP specification addresses this gap by defining a structured, cryptographic event format for AI agent governance actions. The format captures:
+The AIGP specification addresses this gap by defining a structured, cryptographic event format for AI agent governance actions. The format captures:
 
 - **What happened** -- the event type and category.
 - **Who acted** -- the agent, its organization, and trace context.
@@ -92,13 +92,13 @@ The AGP specification addresses this gap by defining a structured, cryptographic
 - **Whether it was allowed** -- denial reasons, violation types, and severity.
 - **Cryptographic proof** -- a hash of the governed content at the time of the action.
 
-AGP is designed to be adopted by any platform, framework, or organization regardless of the agent protocol (A2A, MCP, REST, gRPC, or others) or storage backend in use.
+AIGP is designed to be adopted by any platform, framework, or organization regardless of the agent protocol (A2A, MCP, REST, gRPC, or others) or storage backend in use.
 
 ### 1.3 Scope
 
 This specification defines:
 
-- The structure and semantics of an AGP event.
+- The structure and semantics of an AIGP event.
 - The set of standard event types and their categories.
 - Naming conventions for governed resources (Agent Governance Resource Names).
 - Rules for computing the governance hash.
@@ -122,7 +122,7 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 
 ### 2.2 JSON Conventions
 
-- All AGP events MUST be representable as JSON objects conforming to [RFC 8259][rfc8259].
+- All AIGP events MUST be representable as JSON objects conforming to [RFC 8259][rfc8259].
 - String values MUST be encoded as UTF-8.
 - DateTime values MUST be represented as strings in [RFC 3339][rfc3339] format with millisecond precision and the UTC time zone designator `Z` (e.g., `2025-01-15T14:30:00.123Z`).
 - UUID values MUST conform to [RFC 9562][rfc9562] (UUID version 4).
@@ -139,14 +139,14 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 
 ## 3. Terminology
 
-**AGP Event**
-: A single structured record that captures a governance action performed by or upon an AI agent. An AGP event contains identity, proof, classification, and metadata fields as defined in this specification.
+**AIGP Event**
+: A single structured record that captures a governance action performed by or upon an AI agent. An AIGP event contains identity, proof, classification, and metadata fields as defined in this specification.
 
 **Governance Hash**
 : A cryptographic digest (by default SHA-256) computed over the governed content at the time of an action. The governance hash provides tamper evidence: if the content changes after hash computation, the hash will no longer match the content.
 
 **AGRN (Agent Governance Resource Name)**
-: A typed, kebab-case identifier for a governed resource. The format is `type.kebab-name`, where `type` is one of `agent`, `context`, `prompt`, or `org`. AGRNs provide globally unique, human-readable, self-describing identifiers for use in AGP events.
+: A typed, kebab-case identifier for a governed resource. The format is `type.kebab-name`, where `type` is one of `agent`, `context`, `prompt`, or `org`. AGRNs provide globally unique, human-readable, self-describing identifiers for use in AIGP events.
 
 **Governance Action**
 : An operation that is subject to governance controls, such as delivering context to an agent, using a prompt, registering an agent, or detecting a policy violation.
@@ -161,7 +161,7 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 : A governed template or instruction set used to direct an agent's behavior. Prompts are versioned and subject to approval workflows.
 
 **Trace**
-: A correlation identifier (`trace_id`) that links all AGP events arising from a single user request, agent execution, or governance workflow. A single trace enables end-to-end reconstruction of the governance path.
+: A correlation identifier (`trace_id`) that links all AIGP events arising from a single user request, agent execution, or governance workflow. A single trace enables end-to-end reconstruction of the governance path.
 
 **Data Classification**
 : A label indicating the sensitivity level of the data involved in a governance action. This specification defines a four-tier model: `public`, `internal`, `confidential`, and `restricted`.
@@ -170,32 +170,32 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 
 ## 4. Design Principles
 
-The following principles inform the design of the AGP specification. Conforming implementations SHOULD adhere to these principles.
+The following principles inform the design of the AIGP specification. Conforming implementations SHOULD adhere to these principles.
 
 **Principle 1: Open and Protocol-Agnostic.**
-AGP events MUST NOT assume a specific transport protocol. Implementations MUST be able to produce AGP events regardless of whether the underlying agent communication uses A2A, MCP, REST, gRPC, or any other protocol. The event format is independent of the wire protocol.
+AIGP events MUST NOT assume a specific transport protocol. Implementations MUST be able to produce AIGP events regardless of whether the underlying agent communication uses A2A, MCP, REST, gRPC, or any other protocol. The event format is independent of the wire protocol.
 
 **Principle 2: Tamper-Evident by Default.**
-Every AGP event MUST include a `governance_hash` field. When governed content is present, the hash MUST be computed over that content at the source. If the content is altered between creation and verification, the hash mismatch provides evidence of tampering.
+Every AIGP event MUST include a `governance_hash` field. When governed content is present, the hash MUST be computed over that content at the source. If the content is altered between creation and verification, the hash mismatch provides evidence of tampering.
 
 **Principle 3: Traceable End-to-End.**
-Every AGP event MUST carry a `trace_id` for distributed correlation. A single trace identifier MUST be reused across all related events (prompt retrieval, context injection, inference, audit) so that the full governance chain can be reconstructed from a single query.
+Every AIGP event MUST carry a `trace_id` for distributed correlation. A single trace identifier MUST be reused across all related events (prompt retrieval, context injection, inference, audit) so that the full governance chain can be reconstructed from a single query.
 
 **Principle 4: Flat and Queryable.**
-AGP events SHOULD use a flat (non-nested) record structure. All governance-relevant fields SHOULD be top-level keys. This design enables direct querying without joins, making AGP events suitable for OLAP engines, columnar stores, and streaming analytics. Implementations MAY use nested structures in the `metadata` field for domain-specific extensions.
+AIGP events SHOULD use a flat (non-nested) record structure. All governance-relevant fields SHOULD be top-level keys. This design enables direct querying without joins, making AIGP events suitable for OLAP engines, columnar stores, and streaming analytics. Implementations MAY use nested structures in the `metadata` field for domain-specific extensions.
 
 **Principle 5: Extensible, Not Rigid.**
-The specification defines required fields that capture the essentials of every governance action. The `metadata` field and extension field prefix (`ext_`) provide mechanisms for implementations to attach domain-specific data without breaking the core schema. Implementations MUST NOT require consumers to understand extension fields in order to process core AGP events.
+The specification defines required fields that capture the essentials of every governance action. The `metadata` field and extension field prefix (`ext_`) provide mechanisms for implementations to attach domain-specific data without breaking the core schema. Implementations MUST NOT require consumers to understand extension fields in order to process core AIGP events.
 
 ---
 
-## 5. AGP Event Structure
+## 5. AIGP Event Structure
 
-An AGP event is a flat JSON object. This section defines all fields, their types, and their requirements.
+An AIGP event is a flat JSON object. This section defines all fields, their types, and their requirements.
 
 ### 5.1 Required Fields
 
-The following fields MUST be present in every AGP event. An event missing any required field is non-conforming.
+The following fields MUST be present in every AIGP event. An event missing any required field is non-conforming.
 
 | Field | Type | Description |
 |---|---|---|
@@ -269,7 +269,7 @@ The following fields are OPTIONAL and provide extensibility and operational meta
 |---|---|---|---|
 | `template_rendered` | Boolean | `false` | Indicates whether the context content was rendered with template variables before delivery. When `true`, the `governance_hash` MUST be computed over the rendered (post-substitution) content. |
 | `ingested_at` | String (DateTime) | *(none)* | The time at which the event was received by the analytics or storage system. MUST be in RFC 3339 format with millisecond precision and UTC timezone designator `Z`. This field enables measurement of ingestion latency (`ingested_at` minus `event_time`). |
-| `metadata` | String (JSON) | `"{}"` | An extensible field for domain-specific data. The value MUST be a valid JSON string (a serialized JSON object). Implementations MAY use this field to attach regulatory hooks, custom tags, framework-specific context, or other non-standard data. Consumers MUST NOT require specific keys within `metadata` to process core AGP events. |
+| `metadata` | String (JSON) | `"{}"` | An extensible field for domain-specific data. The value MUST be a valid JSON string (a serialized JSON object). Implementations MAY use this field to attach regulatory hooks, custom tags, framework-specific context, or other non-standard data. Consumers MUST NOT require specific keys within `metadata` to process core AIGP events. |
 
 ### 5.8 Extension Fields
 
@@ -277,15 +277,15 @@ Fields prefixed with `ext_` are reserved for implementation-specific extensions.
 
 - Extension field names MUST begin with `ext_` followed by one or more lowercase alphanumeric characters or underscores.
 - Extension field names MUST match the pattern `^ext_[a-z][a-z0-9_]*$`.
-- Implementations MUST NOT require consumers to understand extension fields in order to process core AGP events.
+- Implementations MUST NOT require consumers to understand extension fields in order to process core AIGP events.
 - Consumers MUST ignore extension fields they do not recognize.
-- The AGP JSON Schema (Appendix A) MAY be configured to permit additional properties prefixed with `ext_` while rejecting other unknown fields.
+- The AIGP JSON Schema (Appendix A) MAY be configured to permit additional properties prefixed with `ext_` while rejecting other unknown fields.
 
 ---
 
 ## 6. Event Types
 
-The AGP specification defines 16 standard event types across 8 categories. Implementations MUST use the standard event types for the governance actions described below. Implementations MAY define additional custom event types following the naming conventions in this section.
+The AIGP specification defines 16 standard event types across 8 categories. Implementations MUST use the standard event types for the governance actions described below. Implementations MAY define additional custom event types following the naming conventions in this section.
 
 ### 6.1 Context Injection Events
 
@@ -437,7 +437,7 @@ Examples of domain-specific custom event types include `PATIENT_DATA_ACCESSED`, 
 
 ### 7.1 Overview
 
-A Agent Governance Resource Name (AGRN) is a typed, kebab-case identifier for a governed resource. AGRNs provide globally unique, human-readable, and self-describing names for agents, contexts, prompts, and organizations within AGP events.
+A Agent Governance Resource Name (AGRN) is a typed, kebab-case identifier for a governed resource. AGRNs provide globally unique, human-readable, and self-describing names for agents, contexts, prompts, and organizations within AIGP events.
 
 ### 7.2 Format
 
@@ -469,7 +469,7 @@ Where:
 3. The `kebab-name` MUST NOT begin or end with a hyphen.
 4. The `kebab-name` MUST NOT contain consecutive hyphens (`--`).
 5. The `kebab-name` MUST be at least one character long.
-6. The type prefix (`agent.`, `context.`, `prompt.`, `org.`) MUST be included as part of the AGRN and makes the resource self-describing in any AGP event or log line.
+6. The type prefix (`agent.`, `context.`, `prompt.`, `org.`) MUST be included as part of the AGRN and makes the resource self-describing in any AIGP event or log line.
 7. The complete AGRN MUST match the regular expression: `^(agent|context|prompt|org)\.[a-z][a-z0-9]*(-[a-z0-9]+)*$`.
 
 ### 7.5 Usage
@@ -519,7 +519,7 @@ A verifier reconstructs the hash by applying the same algorithm to the same cont
 
 ### 8.7 Reproducibility
 
-If the same content is delivered to multiple agents, each resulting AGP event MUST produce the same `governance_hash` value (assuming the same algorithm). This property enables auditors to verify that identical content was delivered to different agents.
+If the same content is delivered to multiple agents, each resulting AIGP event MUST produce the same `governance_hash` value (assuming the same algorithm). This property enables auditors to verify that identical content was delivered to different agents.
 
 ---
 
@@ -557,7 +557,7 @@ Implementations SHOULD assign severity consistently based on the nature and impa
 
 ## 11. Trace ID Conventions
 
-The `trace_id` field is REQUIRED (Section 5.1) and provides distributed correlation across all AGP events arising from a single governance workflow.
+The `trace_id` field is REQUIRED (Section 5.1) and provides distributed correlation across all AIGP events arising from a single governance workflow.
 
 ### 11.1 Accepted Formats
 
@@ -571,9 +571,9 @@ Implementations SHOULD use one of the following trace ID formats:
 
 ### 11.2 Consistency Requirements
 
-- The same `trace_id` MUST be used across all AGP events that are part of the same governance workflow (e.g., the prompt retrieval, context injection, LLM inference, and audit log events for a single agent request).
+- The same `trace_id` MUST be used across all AIGP events that are part of the same governance workflow (e.g., the prompt retrieval, context injection, LLM inference, and audit log events for a single agent request).
 - Implementations MUST NOT reuse a `trace_id` for unrelated governance workflows.
-- Implementations that integrate with OpenTelemetry SHOULD propagate the OpenTelemetry trace ID as the AGP `trace_id`.
+- Implementations that integrate with OpenTelemetry SHOULD propagate the OpenTelemetry trace ID as the AIGP `trace_id`.
 
 ### 11.3 Generation
 
@@ -590,7 +590,7 @@ This specification defines three conformance levels. Implementations MUST declar
 
 An implementation conforms to the **Core** level if it satisfies all of the following:
 
-1. Every produced AGP event MUST contain all required fields as defined in Section 5.1 (`event_id`, `event_type`, `event_category`, `event_time`, `agent_id`, `governance_hash`, `trace_id`).
+1. Every produced AIGP event MUST contain all required fields as defined in Section 5.1 (`event_id`, `event_type`, `event_category`, `event_time`, `agent_id`, `governance_hash`, `trace_id`).
 2. The `event_type` field MUST contain a valid event type: either one of the 16 standard types defined in Section 6, or a custom type conforming to the naming rules in Section 6.9.
 3. The `event_id` MUST be a valid UUID v4.
 4. The `event_time` MUST be a valid RFC 3339 DateTime with millisecond precision and UTC timezone designator.
@@ -620,31 +620,31 @@ An implementation conforms to the **Full** level if it satisfies all Core and Ex
 
 ## 13. Transport Bindings
 
-This section is a placeholder for future work. Transport bindings define how AGP events are serialized and transmitted over specific protocols. The AGP event format is transport-agnostic; the bindings below are informational and will be fully specified in companion documents.
+This section is a placeholder for future work. Transport bindings define how AIGP events are serialized and transmitted over specific protocols. The AIGP event format is transport-agnostic; the bindings below are informational and will be fully specified in companion documents.
 
 ### 13.1 HTTP
 
-AGP events MAY be transmitted over HTTP using the following conventions:
+AIGP events MAY be transmitted over HTTP using the following conventions:
 
 - Events SHOULD be sent as JSON in the body of an HTTP POST request.
 - The `Content-Type` header MUST be `application/json`.
-- Batch delivery MAY use a JSON array of AGP events in a single request body.
-- Endpoints receiving AGP events SHOULD return HTTP 202 (Accepted) upon successful receipt.
+- Batch delivery MAY use a JSON array of AIGP events in a single request body.
+- Endpoints receiving AIGP events SHOULD return HTTP 202 (Accepted) upon successful receipt.
 - Transport security MUST use TLS 1.2 or later (see Section 14).
 
 ### 13.2 Kafka
 
-AGP events MAY be transmitted via Apache Kafka using the following conventions:
+AIGP events MAY be transmitted via Apache Kafka using the following conventions:
 
-- Each AGP event SHOULD be a single Kafka message with a JSON-serialized value.
+- Each AIGP event SHOULD be a single Kafka message with a JSON-serialized value.
 - The message key SHOULD be the `agent_id` or `org_id` to enable partitioning by agent or organization.
 - Topic naming conventions are outside the scope of this specification but SHOULD be documented by the implementing organization.
 
 ### 13.3 gRPC
 
-AGP events MAY be transmitted via gRPC using the following conventions:
+AIGP events MAY be transmitted via gRPC using the following conventions:
 
-- A Protocol Buffers (protobuf) message definition corresponding to the AGP event schema SHOULD be provided by the implementation.
+- A Protocol Buffers (protobuf) message definition corresponding to the AIGP event schema SHOULD be provided by the implementation.
 - Streaming RPCs MAY be used for high-throughput event delivery.
 - The protobuf field types SHOULD map to the JSON types defined in Section 5.
 
@@ -658,7 +658,7 @@ The `governance_hash` field provides **integrity verification** (tamper detectio
 
 ### 14.2 Event Signing
 
-Implementations that require authentication or non-repudiation SHOULD sign AGP events using a digital signature algorithm. Recommended algorithms include:
+Implementations that require authentication or non-repudiation SHOULD sign AIGP events using a digital signature algorithm. Recommended algorithms include:
 
 - **Ed25519** -- for compact signatures and fast verification.
 - **ECDSA with P-256** -- for compatibility with existing PKI infrastructure.
@@ -667,16 +667,16 @@ Signed events SHOULD include the signature in an extension field (e.g., `ext_sig
 
 ### 14.3 Transport Security
 
-AGP events SHOULD be transported over TLS 1.2 or later. Implementations MUST NOT transmit AGP events containing `confidential` or `restricted` data over unencrypted channels.
+AIGP events SHOULD be transported over TLS 1.2 or later. Implementations MUST NOT transmit AIGP events containing `confidential` or `restricted` data over unencrypted channels.
 
 ### 14.4 Threat Model
 
 Implementations SHOULD consider the following threats:
 
-- **Replay attacks:** An attacker re-submits a previously captured AGP event. Implementations SHOULD use the `event_id` (UUID) to detect and reject duplicate events.
+- **Replay attacks:** An attacker re-submits a previously captured AIGP event. Implementations SHOULD use the `event_id` (UUID) to detect and reject duplicate events.
 - **Hash collision:** An attacker crafts content that produces the same `governance_hash` as different content. For SHA-256, the probability of collision is negligible (approximately 2^-128 for a birthday attack). This threat is not considered material for current deployments.
-- **Man-in-the-middle:** An attacker intercepts and modifies AGP events in transit. TLS transport (Section 14.3) mitigates this threat. Implementations requiring higher assurance SHOULD use event signing (Section 14.2).
-- **Event fabrication:** An attacker injects fabricated AGP events. Implementations SHOULD authenticate event producers and SHOULD validate that the `agent_id` matches an authorized source.
+- **Man-in-the-middle:** An attacker intercepts and modifies AIGP events in transit. TLS transport (Section 14.3) mitigates this threat. Implementations requiring higher assurance SHOULD use event signing (Section 14.2).
+- **Event fabrication:** An attacker injects fabricated AIGP events. Implementations SHOULD authenticate event producers and SHOULD validate that the `agent_id` matches an authorized source.
 
 ### 14.5 Content Non-Recovery
 
@@ -688,7 +688,7 @@ The `governance_hash` does NOT encrypt the governed content. The original conten
 
 ### 15.1 Personally Identifiable Information
 
-AGP events MAY contain data that constitutes personally identifiable information (PII) under applicable data protection laws. Fields that may contain PII include, but are not limited to:
+AIGP events MAY contain data that constitutes personally identifiable information (PII) under applicable data protection laws. Fields that may contain PII include, but are not limited to:
 
 - `source_ip` -- may identify an individual or a specific device.
 - `agent_id` -- may be correlated with an individual operator.
@@ -709,11 +709,11 @@ The `source_ip` field MAY be omitted entirely if it is not required for the gove
 
 ### 15.5 Retention Policies
 
-Retention policies for AGP events SHOULD be defined by the implementing organization in accordance with applicable legal, regulatory, and business requirements. This specification does not mandate a specific retention period.
+Retention policies for AIGP events SHOULD be defined by the implementing organization in accordance with applicable legal, regulatory, and business requirements. This specification does not mandate a specific retention period.
 
 ### 15.6 Right to Erasure and Immutable Audit Trails
 
-AGP events are designed to serve as immutable audit records. Data protection laws such as GDPR grant individuals a right to erasure ("right to be forgotten") that may conflict with the immutability requirement. Implementations SHOULD document their approach to resolving this tension, which may include:
+AIGP events are designed to serve as immutable audit records. Data protection laws such as GDPR grant individuals a right to erasure ("right to be forgotten") that may conflict with the immutability requirement. Implementations SHOULD document their approach to resolving this tension, which may include:
 
 - Pseudonymization of PII fields in older events.
 - Cryptographic erasure (destroying the key used to encrypt PII fields).
@@ -729,10 +729,10 @@ This document has no IANA actions. This section is included as a placeholder for
 
 ## Appendix A: JSON Schema
 
-The normative JSON Schema for AGP events is maintained at:
+The normative JSON Schema for AIGP events is maintained at:
 
 ```
-schema/agp-event.schema.json
+schema/aigp-event.schema.json
 ```
 
 The schema is authored in JSON Schema Draft 2020-12 and defines:
@@ -745,13 +745,13 @@ The schema is authored in JSON Schema Draft 2020-12 and defines:
 
 Implementations SHOULD validate produced events against this schema. Implementations MAY extend the schema to support extension fields (Section 5.8) by setting `additionalProperties` to allow fields matching `^ext_[a-z][a-z0-9_]*$`.
 
-The canonical JSON Schema is available in the AGP repository at [schema/agp-event.schema.json](../schema/agp-event.schema.json).
+The canonical JSON Schema is available in the AIGP repository at [schema/aigp-event.schema.json](../schema/aigp-event.schema.json).
 
 ---
 
 ## Appendix B: Complete Example
 
-The following is a fully annotated AGP event representing a successful context injection. All required fields and relevant optional fields are populated.
+The following is a fully annotated AIGP event representing a successful context injection. All required fields and relevant optional fields are populated.
 
 ```json
 {
@@ -829,7 +829,7 @@ The following is a fully annotated AGP event representing a successful context i
 
 | Version | Date | Changes |
 |---|---|---|
-| 0.1.0 | 2025-01-15 | Initial draft. Defines AGP event structure, 16 standard event types, AGRN naming conventions, governance hash computation, data classification and severity levels, trace ID conventions, and three conformance levels. |
+| 0.1.0 | 2025-01-15 | Initial draft. Defines AIGP event structure, 16 standard event types, AGRN naming conventions, governance hash computation, data classification and severity levels, trace ID conventions, and three conformance levels. |
 
 ---
 
@@ -848,4 +848,4 @@ The following is a fully annotated AGP event representing a successful context i
 - **[CloudEvents]** Cloud Native Computing Foundation, "CloudEvents - Version 1.0.2", https://cloudevents.io/
 - **[OpenTelemetry]** OpenTelemetry Specification, "Semantic Conventions", https://opentelemetry.io/docs/specs/semconv/
 - **[FIPS-180-4]** National Institute of Standards and Technology, "Secure Hash Standard (SHS)", FIPS PUB 180-4, August 2015. https://csrc.nist.gov/publications/detail/fips/180/4/final
-- **[Sandarb]** Sandarb -- Reference implementation of the AGP specification. https://sandarb.ai
+- **[Sandarb]** Sandarb -- Reference implementation of the AIGP specification. https://sandarb.ai

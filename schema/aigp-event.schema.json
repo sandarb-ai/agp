@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://agp.sandarb.ai/schema/agp-event.schema.json",
-  "title": "AGP Event",
-  "description": "AI Governance Proof (AGP) event schema v0.2.0 — an open specification for capturing cryptographic proof of every AI agent governance action.",
+  "$id": "https://aigp.sandarb.ai/schema/aigp-event.schema.json",
+  "title": "AIGP Event",
+  "description": "AI Governance Proof (AIGP) event schema v0.2.0 — an open specification for capturing cryptographic proof of every AI agent governance action.",
   "type": "object",
   "required": [
     "event_id",
