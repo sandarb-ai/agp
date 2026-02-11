@@ -9,9 +9,9 @@
   "org_id": "org.finco",
   "org_name": "FinCo",
 
-  "context_id": "ctx-007",
-  "context_name": "context.pre-release-earnings",
-  "context_version": 2,
+  "policy_id": "pol-007",
+  "policy_name": "policy.pre-release-earnings",
+  "policy_version": 2,
 
   "prompt_id": "",
   "prompt_name": "",
@@ -30,7 +30,7 @@
 
   "source_ip": "10.0.2.88",
   "request_method": "GET",
-  "request_path": "/api/contexts/pre-release-earnings/content",
+  "request_path": "/api/policies/pre-release-earnings/content",
 
   "ingested_at": "2025-01-15T16:45:00.890Z",
 

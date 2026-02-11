@@ -9,9 +9,9 @@
   "org_id": "org.finco",
   "org_name": "FinCo",
 
-  "context_id": "ctx-001",
-  "context_name": "context.trading-limits",
-  "context_version": 4,
+  "policy_id": "pol-001",
+  "policy_name": "policy.trading-limits",
+  "policy_version": 4,
 
   "prompt_id": "",
   "prompt_name": "",
@@ -30,7 +30,7 @@
 
   "source_ip": "10.0.1.42",
   "request_method": "GET",
-  "request_path": "/api/contexts/trading-limits/content",
+  "request_path": "/api/policies/trading-limits/content",
 
   "ingested_at": "2025-01-15T14:30:01.456Z",
 

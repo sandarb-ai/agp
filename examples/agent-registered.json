@@ -9,9 +9,9 @@
   "org_id": "org.finco",
   "org_name": "FinCo",
 
-  "context_id": "",
-  "context_name": "",
-  "context_version": 0,
+  "policy_id": "",
+  "policy_name": "",
+  "policy_version": 0,
 
   "prompt_id": "",
   "prompt_name": "",

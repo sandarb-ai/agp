@@ -9,9 +9,9 @@
   "org_id": "org.finco",
   "org_name": "FinCo",
 
-  "context_id": "ctx-001",
-  "context_name": "context.trading-limits",
-  "context_version": 0,
+  "policy_id": "pol-001",
+  "policy_name": "policy.trading-limits",
+  "policy_version": 0,
 
   "prompt_id": "",
   "prompt_name": "",
@@ -24,13 +24,13 @@
 
   "template_rendered": false,
 
-  "denial_reason": "Agent agent.marketing-assistant is not linked to context context.trading-limits",
+  "denial_reason": "Agent agent.marketing-assistant is not linked to policy policy.trading-limits",
   "violation_type": "ACCESS_CONTROL",
   "severity": "medium",
 
   "source_ip": "10.0.1.55",
   "request_method": "GET",
-  "request_path": "/api/contexts/trading-limits/content",
+  "request_path": "/api/policies/trading-limits/content",
 
   "ingested_at": "2025-01-15T14:31:01.234Z",
 

@@ -43,21 +43,21 @@ An AIGP event is a single JSON record that captures proof of one governance acti
 ```python
 import json, hashlib, uuid, datetime
 
-def create_aigp_event(agent_id, context_name, content, trace_id):
+def create_aigp_event(agent_id, policy_name, content, trace_id):
     return {
         "event_id": str(uuid.uuid4()),
         "event_type": "INJECT_SUCCESS",
         "event_category": "inject",
         "event_time": datetime.datetime.utcnow().isoformat() + "Z",
         "agent_id": agent_id,
-        "context_name": context_name,
-        "context_version": 1,
+        "policy_name": policy_name,
+        "policy_version": 1,
         "governance_hash": hashlib.sha256(content.encode()).hexdigest(),
         "trace_id": trace_id,
     }
 
 # Emit the event to your log, Kafka, or any store
-event = create_aigp_event("agent.trading-bot", "context.trading-limits", "Max position: $10M", "trace-001")
+event = create_aigp_event("agent.trading-bot", "policy.trading-limits", "Max position: $10M", "trace-001")
 print(json.dumps(event, indent=2))
 ```
 
@@ -79,7 +79,7 @@ Every AIGP event has these required fields. The full schema (25+ fields) is in t
 | `governance_hash` | String | SHA-256 hash of the governed content — the cryptographic proof |
 | `trace_id` | String | Distributed trace ID for end-to-end correlation |
 
-Optional but recommended: `context_name`, `context_version`, `prompt_name`, `prompt_version`, `data_classification`, `org_id`, `denial_reason`, `severity`, `metadata`.
+Optional but recommended: `policy_name`, `policy_version`, `prompt_name`, `prompt_version`, `data_classification`, `org_id`, `denial_reason`, `severity`, `metadata`.
 
 > **Full schema:** [`spec/aigp-spec.md`](./spec/aigp-spec.md) | **JSON Schema:** [`schema/aigp-event.schema.json`](./schema/aigp-event.schema.json)
 
@@ -87,7 +87,7 @@ Optional but recommended: `context_name`, `context_version`, `prompt_name`, `pro
 
 1. **Open and protocol-agnostic.** Works with A2A, MCP, REST, gRPC, or anything else. The format doesn't assume a transport.
 2. **Tamper-evident by default.** Every event includes a `governance_hash`. If content changes between creation and storage, the hash won't match.
-3. **Traceable end-to-end.** Every event carries a `trace_id`. One query reconstructs the full chain: which agent, which prompt, which context, what happened.
+3. **Traceable end-to-end.** Every event carries a `trace_id`. One query reconstructs the full chain: which agent, which prompt, which policy, what happened.
 4. **Flat and queryable.** Single wide event table — no joins for governance queries. Designed for OLAP engines like ClickHouse but works with any store.
 5. **Extensible, not rigid.** The `metadata` object and `ext_`-prefixed fields allow domain-specific data without breaking the schema.
 
@@ -99,10 +99,10 @@ AIGP defines 16 event types across 7 categories. Implementations may extend thes
 
 | Category | Event Types | When emitted |
 |----------|------------|--------------|
-| Context Injection | `INJECT_SUCCESS`, `INJECT_DENIED` | Agent requests governed context |
+| Policy Injection | `INJECT_SUCCESS`, `INJECT_DENIED` | Agent requests governed policy |
 | Prompt Usage | `PROMPT_USED`, `PROMPT_DENIED` | Agent pulls an approved prompt |
 | Agent Lifecycle | `AGENT_REGISTERED`, `AGENT_APPROVED`, `AGENT_DEACTIVATED` | Agent joins, is approved, or leaves |
-| Context Lifecycle | `CONTEXT_CREATED`, `CONTEXT_VERSION_APPROVED`, `CONTEXT_ARCHIVED` | Context is created, versioned, or retired |
+| Policy Lifecycle | `POLICY_CREATED`, `POLICY_VERSION_APPROVED`, `POLICY_ARCHIVED` | Policy is created, versioned, or retired |
 | Prompt Lifecycle | `PROMPT_VERSION_CREATED`, `PROMPT_VERSION_APPROVED` | Prompt is created or approved |
 | Governance Proof | `GOVERNANCE_PROOF` | Cryptographic proof-of-delivery recorded |
 | Policy | `POLICY_VIOLATION` | A governance policy is violated |
@@ -132,7 +132,7 @@ Every governed resource follows a typed, kebab-case naming convention called **A
 | Resource | Format | Example |
 |----------|--------|---------|
 | Agent | `agent.<kebab-name>` | `agent.trading-bot-v2` |
-| Context | `context.<kebab-name>` | `context.eu-refund-policy` |
+| Policy | `policy.<kebab-name>` | `policy.eu-refund-policy` |
 | Prompt | `prompt.<kebab-name>` | `prompt.customer-support-v3` |
 | Organization | `org.<kebab-name>` | `org.finco` |
 
@@ -163,7 +163,7 @@ If the same content is delivered to two agents, they produce the same hash — p
 
 ## Example Event
 
-A trading bot successfully receives governed context:
+A trading bot successfully receives a governed policy:
 
 ```json
 {
@@ -173,8 +173,8 @@ A trading bot successfully receives governed context:
   "event_time": "2025-01-15T14:30:00.123Z",
   "agent_id": "agent.trading-bot-v2",
   "org_id": "org.finco",
-  "context_name": "context.trading-limits",
-  "context_version": 4,
+  "policy_name": "policy.trading-limits",
+  "policy_version": 4,
   "governance_hash": "a3f2b8c1d4e5f67890abcdef1234567890abcdef1234567890abcdef12345678",
   "trace_id": "550e8400-e29b-41d4-a716-446655440000",
   "data_classification": "confidential",

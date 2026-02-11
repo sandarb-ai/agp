@@ -7,9 +7,9 @@
   "agent_name": "Patient Intake Assistant",
   "org_id": "org.carepoint-health",
   "org_name": "CarePoint Health Systems",
-  "context_id": "ctx-201",
-  "context_name": "context.hipaa-patient-consent",
-  "context_version": 2,
+  "policy_id": "pol-201",
+  "policy_name": "policy.hipaa-patient-consent",
+  "policy_version": 2,
   "prompt_id": "",
   "prompt_name": "",
   "prompt_version": 0,
@@ -23,7 +23,7 @@
   "severity": "",
   "source_ip": "172.20.1.55",
   "request_method": "GET",
-  "request_path": "/api/contexts/hipaa-patient-consent/content",
+  "request_path": "/api/policies/hipaa-patient-consent/content",
   "ingested_at": "2025-02-25T07:15:00.678Z",
   "metadata": {
     "regulatory_hooks": [

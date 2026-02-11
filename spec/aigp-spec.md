@@ -39,17 +39,17 @@ Future versions of this specification may introduce breaking changes. Implemente
 - [5. AIGP Event Structure](#5-aigp-event-structure)
   - [5.1 Required Fields](#51-required-fields)
   - [5.2 Agent and Organization Fields](#52-agent-and-organization-fields)
-  - [5.3 Context and Prompt Fields](#53-context-and-prompt-fields)
+  - [5.3 Policy and Prompt Fields](#53-policy-and-prompt-fields)
   - [5.4 Governance Proof Fields](#54-governance-proof-fields)
   - [5.5 Denial and Policy Fields](#55-denial-and-policy-fields)
   - [5.6 Request Fields](#56-request-fields)
   - [5.7 Metadata and Timestamps](#57-metadata-and-timestamps)
   - [5.8 Extension Fields](#58-extension-fields)
 - [6. Event Types](#6-event-types)
-  - [6.1 Context Injection Events](#61-context-injection-events)
+  - [6.1 Policy Injection Events](#61-policy-injection-events)
   - [6.2 Prompt Usage Events](#62-prompt-usage-events)
   - [6.3 Agent Lifecycle Events](#63-agent-lifecycle-events)
-  - [6.4 Context Lifecycle Events](#64-context-lifecycle-events)
+  - [6.4 Policy Lifecycle Events](#64-policy-lifecycle-events)
   - [6.5 Prompt Lifecycle Events](#65-prompt-lifecycle-events)
   - [6.6 Governance Proof Events](#66-governance-proof-events)
   - [6.7 Policy Events](#67-policy-events)
@@ -88,7 +88,7 @@ The AIGP specification addresses this gap by defining a structured, cryptographi
 
 - **What happened** -- the event type and category.
 - **Who acted** -- the agent, its organization, and trace context.
-- **What data was involved** -- the context or prompt, its version, and classification.
+- **What data was involved** -- the policy or prompt, its version, and classification.
 - **Whether it was allowed** -- denial reasons, violation types, and severity.
 - **Cryptographic proof** -- a hash of the governed content at the time of the action.
 
@@ -146,16 +146,16 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 : A cryptographic digest (by default SHA-256) computed over the governed content at the time of an action. The governance hash provides tamper evidence: if the content changes after hash computation, the hash will no longer match the content.
 
 **AGRN (Agent Governance Resource Name)**
-: A typed, kebab-case identifier for a governed resource. The format is `type.kebab-name`, where `type` is one of `agent`, `context`, `prompt`, or `org`. AGRNs provide globally unique, human-readable, self-describing identifiers for use in AIGP events.
+: A typed, kebab-case identifier for a governed resource. The format is `type.kebab-name`, where `type` is one of `agent`, `policy`, `prompt`, or `org`. AGRNs provide globally unique, human-readable, self-describing identifiers for use in AIGP events.
 
 **Governance Action**
-: An operation that is subject to governance controls, such as delivering context to an agent, using a prompt, registering an agent, or detecting a policy violation.
+: An operation that is subject to governance controls, such as delivering a policy to an agent, using a prompt, registering an agent, or detecting a policy violation.
 
 **Agent**
 : A software entity (typically an AI agent or autonomous system) that performs governance actions or is the subject of governance actions. Each agent is identified by a unique `agent_id`.
 
-**Context**
-: A governed body of content (such as a policy document, configuration, knowledge base entry, or instruction set) that is delivered to an agent under governance controls. Contexts are versioned and may be classified by sensitivity.
+**Policy**
+: A governed body of content (such as a policy document, configuration, knowledge base entry, or instruction set) that is delivered to an agent under governance controls. Policies are versioned and may be classified by sensitivity.
 
 **Prompt**
 : A governed template or instruction set used to direct an agent's behavior. Prompts are versioned and subject to approval workflows.
@@ -179,7 +179,7 @@ AIGP events MUST NOT assume a specific transport protocol. Implementations MUST 
 Every AIGP event MUST include a `governance_hash` field. When governed content is present, the hash MUST be computed over that content at the source. If the content is altered between creation and verification, the hash mismatch provides evidence of tampering.
 
 **Principle 3: Traceable End-to-End.**
-Every AIGP event MUST carry a `trace_id` for distributed correlation. A single trace identifier MUST be reused across all related events (prompt retrieval, context injection, inference, audit) so that the full governance chain can be reconstructed from a single query.
+Every AIGP event MUST carry a `trace_id` for distributed correlation. A single trace identifier MUST be reused across all related events (prompt retrieval, policy injection, inference, audit) so that the full governance chain can be reconstructed from a single query.
 
 **Principle 4: Flat and Queryable.**
 AIGP events SHOULD use a flat (non-nested) record structure. All governance-relevant fields SHOULD be top-level keys. This design enables direct querying without joins, making AIGP events suitable for OLAP engines, columnar stores, and streaming analytics. Implementations MAY use nested structures in the `metadata` field for domain-specific extensions.
@@ -217,15 +217,15 @@ The following fields provide human-readable context about the agent and its orga
 | `org_id` | String | `""` | Identifier of the organization the agent belongs to. SHOULD follow AGRN format (`org.kebab-name`). Used for data locality, partitioning, and multi-tenant governance. |
 | `org_name` | String | `""` | Human-readable display name of the organization. |
 
-### 5.3 Context and Prompt Fields
+### 5.3 Policy and Prompt Fields
 
-The following fields identify the governed context or prompt involved in the governance action. These fields are OPTIONAL but SHOULD be populated when the event involves a context or prompt resource.
+The following fields identify the governed policy or prompt involved in the governance action. These fields are OPTIONAL but SHOULD be populated when the event involves a policy or prompt resource.
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `context_id` | String | `""` | Unique identifier of the context that was accessed, injected, or governed. |
-| `context_name` | String | `""` | Human-readable name of the context. SHOULD follow AGRN format (`context.kebab-name`). |
-| `context_version` | Integer | `0` | Version of the context at the time of this governance action. This is a point-in-time snapshot — if the context is later updated, this field records the exact version that was used. MUST be a non-negative integer. |
+| `policy_id` | String | `""` | Unique identifier of the policy that was accessed, injected, or governed. |
+| `policy_name` | String | `""` | Human-readable name of the policy. SHOULD follow AGRN format (`policy.kebab-name`). |
+| `policy_version` | Integer | `0` | Version of the policy at the time of this governance action. This is a point-in-time snapshot — if the policy is later updated, this field records the exact version that was used. MUST be a non-negative integer. |
 | `prompt_id` | String | `""` | Unique identifier of the prompt that was used or governed. |
 | `prompt_name` | String | `""` | Human-readable name of the prompt. SHOULD follow AGRN format (`prompt.kebab-name`). |
 | `prompt_version` | Integer | `0` | Version of the prompt at the time of this governance action. This is a point-in-time snapshot — if the prompt is later updated, this field records the exact version that was used. MUST be a non-negative integer. |
@@ -267,9 +267,9 @@ The following fields are OPTIONAL and provide extensibility and operational meta
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `template_rendered` | Boolean | `false` | Indicates whether the context content was rendered with template variables before delivery. When `true`, the `governance_hash` MUST be computed over the rendered (post-substitution) content. |
+| `template_rendered` | Boolean | `false` | Indicates whether the policy content was rendered with template variables before delivery. When `true`, the `governance_hash` MUST be computed over the rendered (post-substitution) content. |
 | `ingested_at` | String (DateTime) | *(none)* | The time at which the event was received by the analytics or storage system. MUST be in RFC 3339 format with millisecond precision and UTC timezone designator `Z`. This field enables measurement of ingestion latency (`ingested_at` minus `event_time`). |
-| `metadata` | String (JSON) | `"{}"` | An extensible field for domain-specific data. The value MUST be a valid JSON string (a serialized JSON object). Implementations MAY use this field to attach regulatory hooks, custom tags, framework-specific context, or other non-standard data. Consumers MUST NOT require specific keys within `metadata` to process core AIGP events. |
+| `metadata` | String (JSON) | `"{}"` | An extensible field for domain-specific data. The value MUST be a valid JSON string (a serialized JSON object). Implementations MAY use this field to attach regulatory hooks, custom tags, framework-specific data, or other non-standard data. Consumers MUST NOT require specific keys within `metadata` to process core AIGP events. |
 
 ### 5.8 Extension Fields
 
@@ -287,23 +287,23 @@ Fields prefixed with `ext_` are reserved for implementation-specific extensions.
 
 The AIGP specification defines 16 standard event types across 8 categories. Implementations MUST use the standard event types for the governance actions described below. Implementations MAY define additional custom event types following the naming conventions in this section.
 
-### 6.1 Context Injection Events
+### 6.1 Policy Injection Events
 
 **Category:** `inject`
 
 #### INJECT_SUCCESS
 
-- **Emitted when:** An agent successfully receives governed context. Implementations MUST emit this event when a context injection request is fulfilled.
+- **Emitted when:** An agent successfully receives a governed policy. Implementations MUST emit this event when a policy injection request is fulfilled.
 - **Required fields:** All fields from Section 5.1.
-- **SHOULD be present:** `context_id`, `context_name`, `context_version`, `data_classification`, `governance_hash` (non-empty, computed over delivered content), `template_rendered`.
+- **SHOULD be present:** `policy_id`, `policy_name`, `policy_version`, `data_classification`, `governance_hash` (non-empty, computed over delivered content), `template_rendered`.
 - **MAY be present:** `org_id`, `org_name`, `agent_name`, `source_ip`, `request_method`, `request_path`, `metadata`.
 
 #### INJECT_DENIED
 
-- **Emitted when:** An agent's request for governed context is denied by access control or policy enforcement. Implementations MUST emit this event when a context injection request is rejected.
+- **Emitted when:** An agent's request for a governed policy is denied by access control or policy enforcement. Implementations MUST emit this event when a policy injection request is rejected.
 - **Required fields:** All fields from Section 5.1.
-- **SHOULD be present:** `context_id`, `context_name`, `data_classification`, `denial_reason`, `violation_type`, `severity`.
-- **Notes:** The `governance_hash` SHOULD be the empty string, as no content was delivered. The `context_version` and `prompt_version` MAY be zero if the denial occurred before version resolution.
+- **SHOULD be present:** `policy_id`, `policy_name`, `data_classification`, `denial_reason`, `violation_type`, `severity`.
+- **Notes:** The `governance_hash` SHOULD be the empty string, as no content was delivered. The `policy_version` and `prompt_version` MAY be zero if the denial occurred before version resolution.
 
 ### 6.2 Prompt Usage Events
 
@@ -347,27 +347,27 @@ The AIGP specification defines 16 standard event types across 8 categories. Impl
 - **SHOULD be present:** `agent_name`, `org_id`.
 - **Notes:** Implementations MAY record the reason for deactivation in the `metadata` field.
 
-### 6.4 Context Lifecycle Events
+### 6.4 Policy Lifecycle Events
 
-**Category:** `context-lifecycle`
+**Category:** `policy-lifecycle`
 
-#### CONTEXT_CREATED
+#### POLICY_CREATED
 
-- **Emitted when:** A new governed context is created. Implementations MUST emit this event when a context resource is first created.
+- **Emitted when:** A new governed policy is created. Implementations MUST emit this event when a policy resource is first created.
 - **Required fields:** All fields from Section 5.1.
-- **SHOULD be present:** `context_id`, `context_name`, `data_classification`, `governance_hash` (computed over the initial content).
+- **SHOULD be present:** `policy_id`, `policy_name`, `data_classification`, `governance_hash` (computed over the initial content).
 
-#### CONTEXT_VERSION_APPROVED
+#### POLICY_VERSION_APPROVED
 
-- **Emitted when:** A new version of a governed context is approved for use. Implementations MUST emit this event when a context version transitions to an approved state.
+- **Emitted when:** A new version of a governed policy is approved for use. Implementations MUST emit this event when a policy version transitions to an approved state.
 - **Required fields:** All fields from Section 5.1.
-- **SHOULD be present:** `context_id`, `context_name`, `context_version`, `governance_hash` (computed over the approved version content), `data_classification`.
+- **SHOULD be present:** `policy_id`, `policy_name`, `policy_version`, `governance_hash` (computed over the approved version content), `data_classification`.
 
-#### CONTEXT_ARCHIVED
+#### POLICY_ARCHIVED
 
-- **Emitted when:** A governed context is archived and is no longer available for injection. Implementations MUST emit this event when a context is archived.
+- **Emitted when:** A governed policy is archived and is no longer available for injection. Implementations MUST emit this event when a policy is archived.
 - **Required fields:** All fields from Section 5.1.
-- **SHOULD be present:** `context_id`, `context_name`.
+- **SHOULD be present:** `policy_id`, `policy_name`.
 
 ### 6.5 Prompt Lifecycle Events
 
@@ -393,7 +393,7 @@ The AIGP specification defines 16 standard event types across 8 categories. Impl
 
 - **Emitted when:** A cryptographic proof-of-delivery is explicitly recorded, independent of any specific injection or usage event. Implementations MAY emit this event as a standalone attestation of governance.
 - **Required fields:** All fields from Section 5.1.
-- **SHOULD be present:** `governance_hash` (non-empty), `context_id` or `prompt_id` (whichever is applicable), `data_classification`.
+- **SHOULD be present:** `governance_hash` (non-empty), `policy_id` or `prompt_id` (whichever is applicable), `data_classification`.
 - **Notes:** This event type enables implementations to produce proof records that are decoupled from the operational events. It is useful for batch attestation, offline auditing, and regulatory reporting.
 
 ### 6.7 Policy Events
@@ -405,7 +405,7 @@ The AIGP specification defines 16 standard event types across 8 categories. Impl
 - **Emitted when:** A governance policy is violated. Implementations MUST emit this event when a policy violation is detected, whether or not the violating action was blocked.
 - **Required fields:** All fields from Section 5.1.
 - **SHOULD be present:** `denial_reason`, `violation_type`, `severity`, `data_classification`.
-- **MAY be present:** `context_id`, `context_name`, `context_version`, `prompt_id`, `prompt_name`, `prompt_version`.
+- **MAY be present:** `policy_id`, `policy_name`, `policy_version`, `prompt_id`, `prompt_name`, `prompt_version`.
 - **Notes:** The `governance_hash` SHOULD contain the hash of the content involved in the violation, if available. The `severity` field SHOULD reflect the impact level as defined in Section 10.
 
 ### 6.8 Agent-to-Agent Events
@@ -417,7 +417,7 @@ The AIGP specification defines 16 standard event types across 8 categories. Impl
 - **Emitted when:** An agent-to-agent protocol call is made. Implementations SHOULD emit this event when an agent invokes another agent via any agent-to-agent protocol.
 - **Required fields:** All fields from Section 5.1.
 - **SHOULD be present:** `request_method`, `request_path`.
-- **MAY be present:** `governance_hash` (if governed content is exchanged), `context_id`, `prompt_id`, `metadata`.
+- **MAY be present:** `governance_hash` (if governed content is exchanged), `policy_id`, `prompt_id`, `metadata`.
 - **Notes:** Implementations MAY use the `metadata` field to record the target agent identifier, the protocol used (A2A, MCP, etc.), and the outcome of the call.
 
 ### 6.9 Custom Event Types
@@ -437,7 +437,7 @@ Examples of domain-specific custom event types include `PATIENT_DATA_ACCESSED`, 
 
 ### 7.1 Overview
 
-A Agent Governance Resource Name (AGRN) is a typed, kebab-case identifier for a governed resource. AGRNs provide globally unique, human-readable, and self-describing names for agents, contexts, prompts, and organizations within AIGP events.
+A Agent Governance Resource Name (AGRN) is a typed, kebab-case identifier for a governed resource. AGRNs provide globally unique, human-readable, and self-describing names for agents, policies, prompts, and organizations within AIGP events.
 
 ### 7.2 Format
 
@@ -458,7 +458,7 @@ Where:
 | Resource Type | Prefix | Example |
 |---|---|---|
 | Agent | `agent.` | `agent.trading-bot-v2` |
-| Context | `context.` | `context.eu-refund-policy` |
+| Policy | `policy.` | `policy.eu-refund-policy` |
 | Prompt | `prompt.` | `prompt.customer-support-v3` |
 | Organization | `org.` | `org.finco` |
 
@@ -469,13 +469,13 @@ Where:
 3. The `kebab-name` MUST NOT begin or end with a hyphen.
 4. The `kebab-name` MUST NOT contain consecutive hyphens (`--`).
 5. The `kebab-name` MUST be at least one character long.
-6. The type prefix (`agent.`, `context.`, `prompt.`, `org.`) MUST be included as part of the AGRN and makes the resource self-describing in any AIGP event or log line.
-7. The complete AGRN MUST match the regular expression: `^(agent|context|prompt|org)\.[a-z][a-z0-9]*(-[a-z0-9]+)*$`.
+6. The type prefix (`agent.`, `policy.`, `prompt.`, `org.`) MUST be included as part of the AGRN and makes the resource self-describing in any AIGP event or log line.
+7. The complete AGRN MUST match the regular expression: `^(agent|policy|prompt|org)\.[a-z][a-z0-9]*(-[a-z0-9]+)*$`.
 
 ### 7.5 Usage
 
 - The `agent_id` field SHOULD contain a AGRN with the `agent.` prefix.
-- The `context_name` field SHOULD contain a AGRN with the `context.` prefix.
+- The `policy_name` field SHOULD contain a AGRN with the `policy.` prefix.
 - The `prompt_name` field SHOULD contain a AGRN with the `prompt.` prefix.
 - The `org_id` field SHOULD contain a AGRN with the `org.` prefix.
 - Implementations at the Full conformance level (Section 12) MUST use AGRN naming for all resource identifier fields.
@@ -507,7 +507,7 @@ governance_hash: "a3f2b8c1d4e5f67890abcdef1234567890abcdef1234567890abcdef123456
 
 ### 8.4 Template-Rendered Content
 
-When `template_rendered` is `true`, the `governance_hash` MUST be computed over the rendered (post-substitution) content, not the raw template. This ensures that the hash reflects the actual content delivered to the agent, including any variable substitutions.
+When `template_rendered` is `true`, the `governance_hash` MUST be computed over the rendered (post-substitution) content, not the raw template. This ensures that the hash reflects the actual policy content delivered to the agent, including any variable substitutions.
 
 ### 8.5 Events Without Governed Content
 
@@ -534,7 +534,7 @@ The `data_classification` field uses a four-tier model aligned with common enter
 | 3 | `confidential` | Data that is restricted to authorized individuals on a need-to-know basis. Unauthorized access may have business impact. |
 | 4 | `restricted` | Data of the highest sensitivity with regulatory implications. Unauthorized access may result in legal, financial, or compliance consequences. |
 
-Implementations SHOULD classify all governed content and populate the `data_classification` field for context injection and prompt usage events. Implementations MAY define sub-classifications within each tier using the `metadata` field.
+Implementations SHOULD classify all governed content and populate the `data_classification` field for policy injection and prompt usage events. Implementations MAY define sub-classifications within each tier using the `metadata` field.
 
 The classification levels are ordered by sensitivity: `public` < `internal` < `confidential` < `restricted`. Implementations that enforce classification-based access control SHOULD deny access when an agent's clearance level is below the content's classification level and MUST emit an appropriate denial or violation event.
 
@@ -571,7 +571,7 @@ Implementations SHOULD use one of the following trace ID formats:
 
 ### 11.2 Consistency Requirements
 
-- The same `trace_id` MUST be used across all AIGP events that are part of the same governance workflow (e.g., the prompt retrieval, context injection, LLM inference, and audit log events for a single agent request).
+- The same `trace_id` MUST be used across all AIGP events that are part of the same governance workflow (e.g., the prompt retrieval, policy injection, LLM inference, and audit log events for a single agent request).
 - Implementations MUST NOT reuse a `trace_id` for unrelated governance workflows.
 - Implementations that integrate with OpenTelemetry SHOULD propagate the OpenTelemetry trace ID as the AIGP `trace_id`.
 
@@ -610,8 +610,8 @@ An implementation conforms to the **Extended** level if it satisfies all Core re
 
 An implementation conforms to the **Full** level if it satisfies all Core and Extended requirements and additionally:
 
-1. All resource identifier fields (`agent_id`, `context_name`, `prompt_name`, `org_id`) MUST use AGRN naming as specified in Section 7.
-2. The `data_classification` field MUST be populated for all events involving governed content (context injection, prompt usage, governance proof, and policy violation events).
+1. All resource identifier fields (`agent_id`, `policy_name`, `prompt_name`, `org_id`) MUST use AGRN naming as specified in Section 7.
+2. The `data_classification` field MUST be populated for all events involving governed content (policy injection, prompt usage, governance proof, and policy violation events).
 3. Implementations SHOULD compute a non-empty `governance_hash` for all events where governed content is available, including lifecycle events where the content is known at the time of the event.
 4. The `metadata` field MUST be a valid JSON-encoded string (defaulting to `"{}"`).
 5. The `ingested_at` field SHOULD be populated by the receiving analytics system.
@@ -751,7 +751,7 @@ The canonical JSON Schema is available in the AIGP repository at [schema/aigp-ev
 
 ## Appendix B: Complete Example
 
-The following is a fully annotated AIGP event representing a successful context injection. All required fields and relevant optional fields are populated.
+The following is a fully annotated AIGP event representing a successful policy injection. All required fields and relevant optional fields are populated.
 
 ```json
 {
@@ -765,9 +765,9 @@ The following is a fully annotated AIGP event representing a successful context 
   "org_id": "org.finco",
   "org_name": "FinCo",
 
-  "context_id": "ctx-001",
-  "context_name": "context.trading-limits",
-  "context_version": 4,
+  "policy_id": "pol-001",
+  "policy_name": "policy.trading-limits",
+  "policy_version": 4,
 
   "prompt_id": "",
   "prompt_name": "",
@@ -786,7 +786,7 @@ The following is a fully annotated AIGP event representing a successful context 
 
   "source_ip": "10.0.1.42",
   "request_method": "GET",
-  "request_path": "/api/contexts/trading-limits/content",
+  "request_path": "/api/policies/trading-limits/content",
 
   "ingested_at": "2025-01-15T14:30:01.456Z",
 
@@ -799,27 +799,27 @@ The following is a fully annotated AIGP event representing a successful context 
 | Field | Annotation |
 |---|---|
 | `event_id` | UUID v4, uniquely identifies this event. |
-| `event_type` | `INJECT_SUCCESS` -- governed context was successfully delivered. |
-| `event_category` | `inject` -- categorizes this as a context injection event. |
+| `event_type` | `INJECT_SUCCESS` -- governed policy was successfully delivered. |
+| `event_category` | `inject` -- categorizes this as a policy injection event. |
 | `event_time` | UTC timestamp with millisecond precision when the injection occurred. |
 | `agent_id` | AGRN identifying the agent: `agent.trading-bot-v2`. |
 | `agent_name` | Human-readable name for display purposes. |
 | `org_id` | AGRN identifying the organization: `org.finco`. |
 | `org_name` | Human-readable organization name. |
-| `context_id` | Internal identifier for the context resource. |
-| `context_name` | AGRN identifying the context: `context.trading-limits`. |
-| `context_version` | Numeric version of the context at the time of delivery (4th version). |
+| `policy_id` | Internal identifier for the policy resource. |
+| `policy_name` | AGRN identifying the policy: `policy.trading-limits`. |
+| `policy_version` | Numeric version of the policy at the time of delivery (4th version). |
 | `prompt_version` | Numeric version of the prompt (0 = no prompt involved). |
 | `prompt_id` / `prompt_name` | Empty -- this event does not involve a prompt. |
-| `governance_hash` | SHA-256 hash of the rendered context content at the time of delivery. |
+| `governance_hash` | SHA-256 hash of the rendered policy content at the time of delivery. |
 | `hash_type` | `sha256` -- the algorithm used (default). |
 | `trace_id` | UUID v4 correlating all events in this governance workflow. |
-| `data_classification` | `confidential` -- this content is restricted to need-to-know access. |
+| `data_classification` | `confidential` -- this policy content is restricted to need-to-know access. |
 | `template_rendered` | `true` -- template variables were substituted before delivery and hashing. |
 | `denial_reason` / `violation_type` / `severity` | Empty -- this is a success event, not a denial or violation. |
 | `source_ip` | IP address of the requesting agent or service. |
-| `request_method` | `GET` -- the HTTP method used to request the context. |
-| `request_path` | The API endpoint that was called. |
+| `request_method` | `GET` -- the HTTP method used to request the policy. |
+| `request_path` | The API endpoint that was called to retrieve the policy. |
 | `ingested_at` | Timestamp when the analytics system received this event (1.333 seconds after `event_time`). |
 | `metadata` | JSON string containing domain-specific data: regulatory hooks and delivery latency. |
 

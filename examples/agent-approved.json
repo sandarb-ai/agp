@@ -7,9 +7,9 @@
   "agent_name": "Loan Underwriter",
   "org_id": "org.meridian-bank",
   "org_name": "Meridian Bank",
-  "context_id": "",
-  "context_name": "",
-  "context_version": 0,
+  "policy_id": "",
+  "policy_name": "",
+  "policy_version": 0,
   "prompt_id": "",
   "prompt_name": "",
   "prompt_version": 0,
@@ -28,8 +28,8 @@
   "metadata": {
     "approved_by": "admin@meridian-bank.com",
     "approval_scope": [
-      "context.credit-scoring-rules",
-      "context.mortgage-rates-q1"
+      "policy.credit-scoring-rules",
+      "policy.mortgage-rates-q1"
     ],
     "a2a_url": "https://loan-underwriter.meridian-bank.internal/.well-known/agent.json",
     "owner_team": "lending-engineering"

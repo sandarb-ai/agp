@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.2.1] - 2026-02-09
 
 ### Added
-- `context_version` field — point-in-time snapshot of the context version used during a governance action
+- `policy_version` field — point-in-time snapshot of the policy version used during a governance action
 - `prompt_version` field — point-in-time snapshot of the prompt version used during a governance action
 
 ### Changed
@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Engine recommendation changed from MergeTree to ReplicatedMergeTree for production deployments
 
 ### Removed
-- `version_id` and `version_number` fields — superseded by `context_version` and `prompt_version`
+- `version_id` and `version_number` fields — superseded by `policy_version` and `prompt_version`
 
 ## [0.2.0] - 2026-02-08
 

@@ -31,9 +31,9 @@
         "AGENT_REGISTERED",
         "AGENT_APPROVED",
         "AGENT_DEACTIVATED",
-        "CONTEXT_CREATED",
-        "CONTEXT_VERSION_APPROVED",
-        "CONTEXT_ARCHIVED",
+        "POLICY_CREATED",
+        "POLICY_VERSION_APPROVED",
+        "POLICY_ARCHIVED",
         "PROMPT_VERSION_CREATED",
         "PROMPT_VERSION_APPROVED",
         "GOVERNANCE_PROOF",
@@ -43,12 +43,12 @@
     },
     "event_category": {
       "type": "string",
-      "description": "Event grouping (e.g. inject, audit, agent-lifecycle, context-lifecycle, prompt-lifecycle, governance-proof, policy).",
+      "description": "Event grouping (e.g. inject, audit, agent-lifecycle, policy-lifecycle, prompt-lifecycle, governance-proof, policy).",
       "examples": [
         "inject",
         "audit",
         "agent-lifecycle",
-        "context-lifecycle",
+        "policy-lifecycle",
         "prompt-lifecycle",
         "governance-proof",
         "policy"
@@ -82,21 +82,21 @@
       "default": ""
     },
 
-    "context_id": {
+    "policy_id": {
       "type": "string",
-      "description": "ID of the context that was accessed or injected.",
+      "description": "ID of the policy that was accessed or injected.",
       "default": ""
     },
-    "context_name": {
+    "policy_name": {
       "type": "string",
-      "description": "Human-readable context name. Should follow AGRN format: context.<kebab-name>.",
+      "description": "Human-readable policy name. Should follow AGRN format: policy.<kebab-name>.",
       "default": "",
-      "examples": ["context.trading-limits", "context.eu-refund-policy"]
+      "examples": ["policy.trading-limits", "policy.eu-refund-policy"]
     },
-    "context_version": {
+    "policy_version": {
       "type": "integer",
       "minimum": 0,
-      "description": "Version of the context at the time of this governance action. Point-in-time snapshot for audit.",
+      "description": "Version of the policy at the time of this governance action. Point-in-time snapshot for audit.",
       "default": 0
     },
     "prompt_id": {
@@ -146,7 +146,7 @@
 
     "template_rendered": {
       "type": "boolean",
-      "description": "Whether the context was rendered with variables before delivery.",
+      "description": "Whether the policy was rendered with variables before delivery.",
       "default": false
     },
 
@@ -192,7 +192,7 @@
 
     "metadata": {
       "type": "object",
-      "description": "Extensible object for domain-specific data. Implementations may add regulatory hooks, custom tags, or framework-specific context.",
+      "description": "Extensible object for domain-specific data. Implementations may add regulatory hooks, custom tags, or framework-specific metadata.",
       "default": {},
       "additionalProperties": true
     }
