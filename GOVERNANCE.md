@@ -1,6 +1,6 @@
 # AIGP Governance
 
-This document describes how the **Audit Governance Protocol (AIGP)** specification is governed. AIGP is an open specification licensed under the [Apache License 2.0](LICENSE).
+This document describes how the **AI Governance Proof (AIGP)** specification is governed. AIGP is an open specification licensed under the [Apache License 2.0](LICENSE). The AIGP name and logo are trademarks of Sandarb AI (see [TRADEMARK.md](TRADEMARK.md)).
 
 ## Principles
 
@@ -83,16 +83,39 @@ Specification releases follow a three-stage process:
 
 ## Working Groups
 
-> **Note:** Working groups have not yet been formed. This section is a placeholder for future governance structure.
-
-As the AIGP community grows, we anticipate forming working groups to focus on specific areas:
+As the AIGP community grows, working groups focus on specific areas of the specification. Each working group has a charter, a lead maintainer, and reports to the project maintainers.
 
 - **Schema Working Group** -- Responsible for the JSON Schema definition and validation tooling.
 - **Events Working Group** -- Responsible for defining and maintaining the standard event type taxonomy.
-- **Compliance Working Group** -- Responsible for conformance levels, test suites, and certification.
+- **Compliance Working Group** -- Responsible for conformance levels, test suites, certification criteria, and trademark enforcement (see below).
 - **Integrations Working Group** -- Responsible for reference implementations and platform integrations.
 
-Working groups will be established when there is sufficient community interest and participation. If you are interested in leading or joining a working group, please open a GitHub issue.
+Working groups are established when there is sufficient community interest and participation. If you are interested in leading or joining a working group, please open a GitHub issue.
+
+## Trademark and Compliance
+
+The AIGP specification is open — anyone can read it, implement it, and build on it under the Apache 2.0 license. The AIGP **brand** (the names "AI Governance Proof," "AIGP," and associated logos) is controlled by the project maintainers to ensure that the name continues to mean one interoperable standard, not a fragmented set of incompatible forks.
+
+Full trademark policy: [TRADEMARK.md](TRADEMARK.md)
+
+### Compliance Working Group
+
+The **Compliance Working Group** is the governing body responsible for:
+
+1. **Conformance test suite** -- Defining, maintaining, and publishing the official AIGP conformance tests. These tests verify that an implementation correctly produces and/or consumes events conforming to the AIGP schema and behavioral requirements.
+
+2. **Certification criteria** -- Establishing the requirements an implementation must meet to use the reserved terms "AIGP Certified," "AIGP Compliant," or "AIGP Conformant." No implementation may use these terms without passing the official conformance tests.
+
+3. **Trademark enforcement** -- Reviewing reported trademark concerns and recommending action to the project maintainers in accordance with the [Trademark Policy](TRADEMARK.md).
+
+4. **Compatibility levels** -- Defining tiers of AIGP compatibility (e.g., "AIGP Producer," "AIGP Consumer," "AIGP Full") as the specification matures.
+
+### Principles
+
+- **The spec is open; the brand is governed.** Anyone can implement AIGP. Only conforming implementations may claim certification.
+- **Self-testing first.** The conformance test suite will be open source. Implementers can self-test before requesting formal certification.
+- **No pay-to-play.** Certification will be based on technical conformance, not commercial relationships.
+- **Transparency.** All certified implementations will be listed publicly in [ADOPTERS.md](ADOPTERS.md) with their certification status and version.
 
 ## Roles
 

@@ -1,4 +1,4 @@
-# AI Governance Proof (AIGP)
+# AI Governance Proof (AIGP)&trade;
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
 [![Spec](https://img.shields.io/badge/Spec-v0.2.1-violet.svg)](./spec/aigp-spec.md)
