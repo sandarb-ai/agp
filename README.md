@@ -3,6 +3,7 @@
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
 [![Spec](https://img.shields.io/badge/Spec-v0.3.0-violet.svg)](./spec/aigp-spec.md)
 [![Schema](https://img.shields.io/badge/JSON_Schema-valid-green.svg)](./schema/aigp-event.schema.json)
+[![OTel](https://img.shields.io/badge/OpenTelemetry-compatible-orange.svg)](./integrations/opentelemetry/semantic-conventions.md)
 
 **An open specification for capturing cryptographic proof of every AI agent governance action.**
 
