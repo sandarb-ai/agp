@@ -8,7 +8,7 @@
     "facets": {
       "aigp_governance": {
         "_producer": "https://github.com/sandarb-ai/aigp",
-        "_schemaURL": "https://github.com/sandarb-ai/aigp/blob/v0.6.0/integrations/openlineage/facets/AIGPGovernanceRunFacet.json",
+        "_schemaURL": "https://github.com/sandarb-ai/aigp/blob/v0.7.0/integrations/openlineage/facets/AIGPGovernanceRunFacet.json",
         "governanceHash": "8dd4648db4f94db951f83bb70fa7b575533912f4fd3219d161384df2b8d523ec",
         "hashType": "merkle-sha256",
         "leafCount": 5,
@@ -16,7 +16,7 @@
         "traceId": "4bf92f3577b34da6a3ce929d0e0e4736",
         "enforcementResult": "allowed",
         "dataClassification": "confidential",
-        "specVersion": "0.6.0"
+        "specVersion": "0.7.0"
       }
     }
   },
@@ -31,7 +31,7 @@
       "inputFacets": {
         "aigp_resource": {
           "_producer": "https://github.com/sandarb-ai/aigp",
-          "_schemaURL": "https://github.com/sandarb-ai/aigp/blob/v0.6.0/integrations/openlineage/facets/AIGPResourceInputFacet.json",
+          "_schemaURL": "https://github.com/sandarb-ai/aigp/blob/v0.7.0/integrations/openlineage/facets/AIGPResourceInputFacet.json",
           "resourceType": "policy",
           "resourceName": "policy.fair-lending",
           "resourceVersion": 4,
@@ -45,7 +45,7 @@
       "inputFacets": {
         "aigp_resource": {
           "_producer": "https://github.com/sandarb-ai/aigp",
-          "_schemaURL": "https://github.com/sandarb-ai/aigp/blob/v0.6.0/integrations/openlineage/facets/AIGPResourceInputFacet.json",
+          "_schemaURL": "https://github.com/sandarb-ai/aigp/blob/v0.7.0/integrations/openlineage/facets/AIGPResourceInputFacet.json",
           "resourceType": "prompt",
           "resourceName": "prompt.scoring-v3",
           "resourceVersion": 3,
@@ -59,7 +59,7 @@
       "inputFacets": {
         "aigp_resource": {
           "_producer": "https://github.com/sandarb-ai/aigp",
-          "_schemaURL": "https://github.com/sandarb-ai/aigp/blob/v0.6.0/integrations/openlineage/facets/AIGPResourceInputFacet.json",
+          "_schemaURL": "https://github.com/sandarb-ai/aigp/blob/v0.7.0/integrations/openlineage/facets/AIGPResourceInputFacet.json",
           "resourceType": "tool",
           "resourceName": "tool.equifax-api",
           "leafHash": "9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c"
@@ -72,7 +72,7 @@
       "inputFacets": {
         "aigp_resource": {
           "_producer": "https://github.com/sandarb-ai/aigp",
-          "_schemaURL": "https://github.com/sandarb-ai/aigp/blob/v0.6.0/integrations/openlineage/facets/AIGPResourceInputFacet.json",
+          "_schemaURL": "https://github.com/sandarb-ai/aigp/blob/v0.7.0/integrations/openlineage/facets/AIGPResourceInputFacet.json",
           "resourceType": "context",
           "resourceName": "context.env-config",
           "leafHash": "d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1"
@@ -85,7 +85,7 @@
       "inputFacets": {
         "aigp_resource": {
           "_producer": "https://github.com/sandarb-ai/aigp",
-          "_schemaURL": "https://github.com/sandarb-ai/aigp/blob/v0.6.0/integrations/openlineage/facets/AIGPResourceInputFacet.json",
+          "_schemaURL": "https://github.com/sandarb-ai/aigp/blob/v0.7.0/integrations/openlineage/facets/AIGPResourceInputFacet.json",
           "resourceType": "lineage",
           "resourceName": "lineage.upstream-orders",
           "leafHash": "e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2"

@@ -40,5 +40,5 @@
   "annotations": {
     "regulatory_hooks": ["FINRA", "SEC"]
   },
-  "spec_version": "0.6.0"
+  "spec_version": "0.7.0"
 }

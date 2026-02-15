@@ -91,7 +91,7 @@ class AIGPInstrumentor:
         self.event_callback = event_callback
         self.openlineage_callback = openlineage_callback
 
-        self._tracer = trace.get_tracer(tracer_name, "0.6.0")
+        self._tracer = trace.get_tracer(tracer_name, "0.7.0")
 
     def get_resource_attributes(self) -> dict[str, str]:
         """
@@ -174,7 +174,7 @@ class AIGPInstrumentor:
 
         # Enforcement result (derived)
         event_type = aigp_event["event_type"]
-        if "DENIED" in event_type or "VIOLATION" in event_type:
+        if "DENIED" in event_type or "VIOLATION" in event_type or "BLOCKED" in event_type:
             attrs[AIGPAttributes.ENFORCEMENT_RESULT] = AIGPAttributes.ENFORCEMENT_DENIED
         else:
             attrs[AIGPAttributes.ENFORCEMENT_RESULT] = AIGPAttributes.ENFORCEMENT_ALLOWED
@@ -214,7 +214,7 @@ class AIGPInstrumentor:
 
         # Set span status for denials/violations
         event_type = aigp_event["event_type"]
-        if "DENIED" in event_type or "VIOLATION" in event_type:
+        if "DENIED" in event_type or "VIOLATION" in event_type or "BLOCKED" in event_type:
             severity = aigp_event.get("severity", "")
             if severity in ("critical", "high"):
                 span.set_status(StatusCode.ERROR, f"AIGP: {event_type}")
@@ -650,9 +650,10 @@ class AIGPInstrumentor:
 
         Args:
             resources: List of (resource_type, resource_name, content) tuples.
-                resource_type: "policy", "prompt", "tool", "context", or "lineage"
+                resource_type: "policy", "prompt", "tool", "context", "lineage",
+                    "memory", "model", or any custom type
                 resource_name: AGRN name (e.g., "policy.trading-limits",
-                    "context.env-config", "lineage.upstream-orders")
+                    "memory.conversation-history", "model.gpt4-trading-v2")
                 content: The governed content string
             data_classification: Data sensitivity level.
             annotations: Informational context (not hashed).
@@ -699,3 +700,523 @@ class AIGPInstrumentor:
         )
 
         return self._dual_emit(AIGPAttributes.EVENT_GOVERNANCE_PROOF, aigp_event, span)
+
+    # ===========================================================
+    # v0.7.0 — Memory Events
+    # ===========================================================
+
+    def memory_read(
+        self,
+        memory_name: str,
+        query: str,
+        content: str,
+        data_classification: str = "",
+        annotations: Optional[dict[str, Any]] = None,
+        span: Optional[Span] = None,
+    ) -> dict[str, Any]:
+        """
+        Emit a MEMORY_READ governance event.
+
+        Records that an agent retrieved content from memory (conversation history,
+        RAG retrieval, vector store query, session state read).
+
+        Args:
+            memory_name: AGRN memory name (e.g., "memory.conversation-history").
+            query: The retrieval query (hashed as query_hash).
+            content: The retrieved content (hashed as governance_hash).
+            data_classification: Data sensitivity level.
+            annotations: Informational context.
+            span: Optional OTel span.
+
+        Returns:
+            AIGP event dict with query_hash and governance_hash.
+        """
+        span_ctx = self._get_span_context(span)
+        governance_hash = compute_governance_hash(content)
+        query_hash = compute_governance_hash(query)
+
+        aigp_event = create_aigp_event(
+            event_type="MEMORY_READ",
+            event_category="memory",
+            agent_id=self.agent_id,
+            trace_id=span_ctx["trace_id"],
+            governance_hash=governance_hash,
+            span_id=span_ctx["span_id"],
+            parent_span_id=span_ctx["parent_span_id"],
+            trace_flags=span_ctx["trace_flags"],
+            agent_name=self.agent_name,
+            org_id=self.org_id,
+            org_name=self.org_name,
+            data_classification=data_classification,
+            query_hash=query_hash,
+            annotations=annotations,
+        )
+
+        return self._dual_emit(AIGPAttributes.EVENT_MEMORY_READ, aigp_event, span)
+
+    def memory_written(
+        self,
+        memory_name: str,
+        content: str,
+        previous_content: Optional[str] = None,
+        data_classification: str = "",
+        annotations: Optional[dict[str, Any]] = None,
+        span: Optional[Span] = None,
+    ) -> dict[str, Any]:
+        """
+        Emit a MEMORY_WRITTEN governance event.
+
+        Records that an agent updated memory (vector store write, conversation
+        history save, session state mutation).
+
+        Args:
+            memory_name: AGRN memory name (e.g., "memory.agent-state").
+            content: The new memory content (hashed as governance_hash).
+            previous_content: Optional previous memory content (hashed as previous_hash).
+            data_classification: Data sensitivity level.
+            annotations: Informational context.
+            span: Optional OTel span.
+
+        Returns:
+            AIGP event dict with governance_hash and optional previous_hash.
+        """
+        span_ctx = self._get_span_context(span)
+        governance_hash = compute_governance_hash(content)
+        previous_hash = compute_governance_hash(previous_content) if previous_content else ""
+
+        aigp_event = create_aigp_event(
+            event_type="MEMORY_WRITTEN",
+            event_category="memory",
+            agent_id=self.agent_id,
+            trace_id=span_ctx["trace_id"],
+            governance_hash=governance_hash,
+            span_id=span_ctx["span_id"],
+            parent_span_id=span_ctx["parent_span_id"],
+            trace_flags=span_ctx["trace_flags"],
+            agent_name=self.agent_name,
+            org_id=self.org_id,
+            org_name=self.org_name,
+            data_classification=data_classification,
+            previous_hash=previous_hash,
+            annotations=annotations,
+        )
+
+        return self._dual_emit(AIGPAttributes.EVENT_MEMORY_WRITTEN, aigp_event, span)
+
+    # ===========================================================
+    # v0.7.0 — Tool Events
+    # ===========================================================
+
+    def tool_invoked(
+        self,
+        tool_name: str,
+        tool_version: int = 0,
+        content: str = "",
+        data_classification: str = "",
+        annotations: Optional[dict[str, Any]] = None,
+        span: Optional[Span] = None,
+    ) -> dict[str, Any]:
+        """Emit a TOOL_INVOKED governance event."""
+        span_ctx = self._get_span_context(span)
+        governance_hash = compute_governance_hash(content) if content else ""
+
+        aigp_event = create_aigp_event(
+            event_type="TOOL_INVOKED",
+            event_category="tool",
+            agent_id=self.agent_id,
+            trace_id=span_ctx["trace_id"],
+            governance_hash=governance_hash,
+            span_id=span_ctx["span_id"],
+            parent_span_id=span_ctx["parent_span_id"],
+            trace_flags=span_ctx["trace_flags"],
+            agent_name=self.agent_name,
+            org_id=self.org_id,
+            org_name=self.org_name,
+            data_classification=data_classification,
+            annotations=annotations,
+        )
+
+        return self._dual_emit(AIGPAttributes.EVENT_TOOL_INVOKED, aigp_event, span)
+
+    def tool_denied(
+        self,
+        tool_name: str,
+        denial_reason: str,
+        severity: str = "medium",
+        violation_type: str = "ACCESS_CONTROL",
+        annotations: Optional[dict[str, Any]] = None,
+        span: Optional[Span] = None,
+    ) -> dict[str, Any]:
+        """Emit a TOOL_DENIED governance event."""
+        span_ctx = self._get_span_context(span)
+
+        aigp_event = create_aigp_event(
+            event_type="TOOL_DENIED",
+            event_category="tool",
+            agent_id=self.agent_id,
+            trace_id=span_ctx["trace_id"],
+            span_id=span_ctx["span_id"],
+            parent_span_id=span_ctx["parent_span_id"],
+            trace_flags=span_ctx["trace_flags"],
+            agent_name=self.agent_name,
+            org_id=self.org_id,
+            org_name=self.org_name,
+            denial_reason=denial_reason,
+            violation_type=violation_type,
+            severity=severity,
+            annotations=annotations,
+        )
+
+        return self._dual_emit(AIGPAttributes.EVENT_TOOL_DENIED, aigp_event, span)
+
+    # ===========================================================
+    # v0.7.0 — Context Events
+    # ===========================================================
+
+    def context_captured(
+        self,
+        context_name: str,
+        content: str,
+        data_classification: str = "",
+        annotations: Optional[dict[str, Any]] = None,
+        span: Optional[Span] = None,
+    ) -> dict[str, Any]:
+        """Emit a CONTEXT_CAPTURED governance event."""
+        span_ctx = self._get_span_context(span)
+        governance_hash = compute_governance_hash(content)
+
+        aigp_event = create_aigp_event(
+            event_type="CONTEXT_CAPTURED",
+            event_category="context",
+            agent_id=self.agent_id,
+            trace_id=span_ctx["trace_id"],
+            governance_hash=governance_hash,
+            span_id=span_ctx["span_id"],
+            parent_span_id=span_ctx["parent_span_id"],
+            trace_flags=span_ctx["trace_flags"],
+            agent_name=self.agent_name,
+            org_id=self.org_id,
+            org_name=self.org_name,
+            data_classification=data_classification,
+            annotations=annotations,
+        )
+
+        return self._dual_emit(AIGPAttributes.EVENT_CONTEXT_CAPTURED, aigp_event, span)
+
+    # ===========================================================
+    # v0.7.0 — Lineage Events
+    # ===========================================================
+
+    def lineage_snapshot(
+        self,
+        lineage_name: str,
+        content: str,
+        data_classification: str = "",
+        annotations: Optional[dict[str, Any]] = None,
+        span: Optional[Span] = None,
+    ) -> dict[str, Any]:
+        """Emit a LINEAGE_SNAPSHOT governance event."""
+        span_ctx = self._get_span_context(span)
+        governance_hash = compute_governance_hash(content)
+
+        aigp_event = create_aigp_event(
+            event_type="LINEAGE_SNAPSHOT",
+            event_category="lineage",
+            agent_id=self.agent_id,
+            trace_id=span_ctx["trace_id"],
+            governance_hash=governance_hash,
+            span_id=span_ctx["span_id"],
+            parent_span_id=span_ctx["parent_span_id"],
+            trace_flags=span_ctx["trace_flags"],
+            agent_name=self.agent_name,
+            org_id=self.org_id,
+            org_name=self.org_name,
+            data_classification=data_classification,
+            annotations=annotations,
+        )
+
+        return self._dual_emit(AIGPAttributes.EVENT_LINEAGE_SNAPSHOT, aigp_event, span)
+
+    # ===========================================================
+    # v0.7.0 — Inference Events
+    # ===========================================================
+
+    def inference_started(
+        self,
+        content: str,
+        data_classification: str = "",
+        annotations: Optional[dict[str, Any]] = None,
+        span: Optional[Span] = None,
+    ) -> dict[str, Any]:
+        """Emit an INFERENCE_STARTED governance event."""
+        span_ctx = self._get_span_context(span)
+        governance_hash = compute_governance_hash(content)
+
+        aigp_event = create_aigp_event(
+            event_type="INFERENCE_STARTED",
+            event_category="inference",
+            agent_id=self.agent_id,
+            trace_id=span_ctx["trace_id"],
+            governance_hash=governance_hash,
+            span_id=span_ctx["span_id"],
+            parent_span_id=span_ctx["parent_span_id"],
+            trace_flags=span_ctx["trace_flags"],
+            agent_name=self.agent_name,
+            org_id=self.org_id,
+            org_name=self.org_name,
+            data_classification=data_classification,
+            annotations=annotations,
+        )
+
+        return self._dual_emit(AIGPAttributes.EVENT_INFERENCE_STARTED, aigp_event, span)
+
+    def inference_completed(
+        self,
+        content: str,
+        data_classification: str = "",
+        annotations: Optional[dict[str, Any]] = None,
+        span: Optional[Span] = None,
+    ) -> dict[str, Any]:
+        """Emit an INFERENCE_COMPLETED governance event."""
+        span_ctx = self._get_span_context(span)
+        governance_hash = compute_governance_hash(content)
+
+        aigp_event = create_aigp_event(
+            event_type="INFERENCE_COMPLETED",
+            event_category="inference",
+            agent_id=self.agent_id,
+            trace_id=span_ctx["trace_id"],
+            governance_hash=governance_hash,
+            span_id=span_ctx["span_id"],
+            parent_span_id=span_ctx["parent_span_id"],
+            trace_flags=span_ctx["trace_flags"],
+            agent_name=self.agent_name,
+            org_id=self.org_id,
+            org_name=self.org_name,
+            data_classification=data_classification,
+            annotations=annotations,
+        )
+
+        return self._dual_emit(AIGPAttributes.EVENT_INFERENCE_COMPLETED, aigp_event, span)
+
+    def inference_blocked(
+        self,
+        denial_reason: str,
+        severity: str = "high",
+        violation_type: str = "",
+        annotations: Optional[dict[str, Any]] = None,
+        span: Optional[Span] = None,
+    ) -> dict[str, Any]:
+        """Emit an INFERENCE_BLOCKED governance event."""
+        span_ctx = self._get_span_context(span)
+
+        aigp_event = create_aigp_event(
+            event_type="INFERENCE_BLOCKED",
+            event_category="inference",
+            agent_id=self.agent_id,
+            trace_id=span_ctx["trace_id"],
+            span_id=span_ctx["span_id"],
+            parent_span_id=span_ctx["parent_span_id"],
+            trace_flags=span_ctx["trace_flags"],
+            agent_name=self.agent_name,
+            org_id=self.org_id,
+            org_name=self.org_name,
+            denial_reason=denial_reason,
+            violation_type=violation_type,
+            severity=severity,
+            annotations=annotations,
+        )
+
+        return self._dual_emit(AIGPAttributes.EVENT_INFERENCE_BLOCKED, aigp_event, span)
+
+    # ===========================================================
+    # v0.7.0 — Human-in-the-Loop Events
+    # ===========================================================
+
+    def human_override(
+        self,
+        denial_reason: str,
+        data_classification: str = "",
+        annotations: Optional[dict[str, Any]] = None,
+        span: Optional[Span] = None,
+    ) -> dict[str, Any]:
+        """Emit a HUMAN_OVERRIDE governance event (GDPR Art. 22)."""
+        span_ctx = self._get_span_context(span)
+
+        aigp_event = create_aigp_event(
+            event_type="HUMAN_OVERRIDE",
+            event_category="human",
+            agent_id=self.agent_id,
+            trace_id=span_ctx["trace_id"],
+            span_id=span_ctx["span_id"],
+            parent_span_id=span_ctx["parent_span_id"],
+            trace_flags=span_ctx["trace_flags"],
+            agent_name=self.agent_name,
+            org_id=self.org_id,
+            org_name=self.org_name,
+            data_classification=data_classification,
+            denial_reason=denial_reason,
+            annotations=annotations,
+        )
+
+        return self._dual_emit(AIGPAttributes.EVENT_HUMAN_OVERRIDE, aigp_event, span)
+
+    def human_approval(
+        self,
+        content: str,
+        data_classification: str = "",
+        annotations: Optional[dict[str, Any]] = None,
+        span: Optional[Span] = None,
+    ) -> dict[str, Any]:
+        """Emit a HUMAN_APPROVAL governance event."""
+        span_ctx = self._get_span_context(span)
+        governance_hash = compute_governance_hash(content)
+
+        aigp_event = create_aigp_event(
+            event_type="HUMAN_APPROVAL",
+            event_category="human",
+            agent_id=self.agent_id,
+            trace_id=span_ctx["trace_id"],
+            governance_hash=governance_hash,
+            span_id=span_ctx["span_id"],
+            parent_span_id=span_ctx["parent_span_id"],
+            trace_flags=span_ctx["trace_flags"],
+            agent_name=self.agent_name,
+            org_id=self.org_id,
+            org_name=self.org_name,
+            data_classification=data_classification,
+            annotations=annotations,
+        )
+
+        return self._dual_emit(AIGPAttributes.EVENT_HUMAN_APPROVAL, aigp_event, span)
+
+    # ===========================================================
+    # v0.7.0 — Classification Events
+    # ===========================================================
+
+    def classification_changed(
+        self,
+        new_classification: str,
+        previous_classification: str = "",
+        annotations: Optional[dict[str, Any]] = None,
+        span: Optional[Span] = None,
+    ) -> dict[str, Any]:
+        """Emit a CLASSIFICATION_CHANGED governance event."""
+        span_ctx = self._get_span_context(span)
+
+        merged_annotations = dict(annotations or {})
+        if previous_classification:
+            merged_annotations["previous_classification"] = previous_classification
+
+        aigp_event = create_aigp_event(
+            event_type="CLASSIFICATION_CHANGED",
+            event_category="classification",
+            agent_id=self.agent_id,
+            trace_id=span_ctx["trace_id"],
+            span_id=span_ctx["span_id"],
+            parent_span_id=span_ctx["parent_span_id"],
+            trace_flags=span_ctx["trace_flags"],
+            agent_name=self.agent_name,
+            org_id=self.org_id,
+            org_name=self.org_name,
+            data_classification=new_classification,
+            annotations=merged_annotations,
+        )
+
+        return self._dual_emit(AIGPAttributes.EVENT_CLASSIFICATION_CHANGED, aigp_event, span)
+
+    # ===========================================================
+    # v0.7.0 — Model Events
+    # ===========================================================
+
+    def model_loaded(
+        self,
+        model_name: str,
+        content: str,
+        data_classification: str = "",
+        annotations: Optional[dict[str, Any]] = None,
+        span: Optional[Span] = None,
+    ) -> dict[str, Any]:
+        """
+        Emit a MODEL_LOADED governance event.
+
+        Records that an agent loaded or initialized a model for inference.
+
+        Args:
+            model_name: AGRN model name (e.g., "model.gpt4-trading-v2").
+            content: Model identity content (model card, config, weights hash).
+            data_classification: Data sensitivity level.
+            annotations: Informational context (model metadata).
+            span: Optional OTel span.
+
+        Returns:
+            AIGP event dict.
+        """
+        span_ctx = self._get_span_context(span)
+        governance_hash = compute_governance_hash(content)
+
+        aigp_event = create_aigp_event(
+            event_type="MODEL_LOADED",
+            event_category="model",
+            agent_id=self.agent_id,
+            trace_id=span_ctx["trace_id"],
+            governance_hash=governance_hash,
+            span_id=span_ctx["span_id"],
+            parent_span_id=span_ctx["parent_span_id"],
+            trace_flags=span_ctx["trace_flags"],
+            agent_name=self.agent_name,
+            org_id=self.org_id,
+            org_name=self.org_name,
+            data_classification=data_classification,
+            annotations=annotations,
+        )
+
+        return self._dual_emit(AIGPAttributes.EVENT_MODEL_LOADED, aigp_event, span)
+
+    def model_switched(
+        self,
+        model_name: str,
+        content: str,
+        previous_content: Optional[str] = None,
+        data_classification: str = "",
+        annotations: Optional[dict[str, Any]] = None,
+        span: Optional[Span] = None,
+    ) -> dict[str, Any]:
+        """
+        Emit a MODEL_SWITCHED governance event.
+
+        Records that an agent switched from one model to another mid-session.
+
+        Args:
+            model_name: AGRN model name of the NEW model.
+            content: New model identity content (hashed as governance_hash).
+            previous_content: Previous model identity content (hashed as previous_hash).
+            data_classification: Data sensitivity level.
+            annotations: Should include previous_model and new_model identifiers.
+            span: Optional OTel span.
+
+        Returns:
+            AIGP event dict with governance_hash and previous_hash.
+        """
+        span_ctx = self._get_span_context(span)
+        governance_hash = compute_governance_hash(content)
+        previous_hash = compute_governance_hash(previous_content) if previous_content else ""
+
+        aigp_event = create_aigp_event(
+            event_type="MODEL_SWITCHED",
+            event_category="model",
+            agent_id=self.agent_id,
+            trace_id=span_ctx["trace_id"],
+            governance_hash=governance_hash,
+            span_id=span_ctx["span_id"],
+            parent_span_id=span_ctx["parent_span_id"],
+            trace_flags=span_ctx["trace_flags"],
+            agent_name=self.agent_name,
+            org_id=self.org_id,
+            org_name=self.org_name,
+            data_classification=data_classification,
+            previous_hash=previous_hash,
+            annotations=annotations,
+        )
+
+        return self._dual_emit(AIGPAttributes.EVENT_MODEL_SWITCHED, aigp_event, span)

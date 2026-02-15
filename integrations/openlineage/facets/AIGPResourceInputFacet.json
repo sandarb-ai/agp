@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/sandarb-ai/aigp/blob/v0.6.0/integrations/openlineage/facets/AIGPResourceInputFacet.json",
+  "$id": "https://github.com/sandarb-ai/aigp/blob/v0.7.0/integrations/openlineage/facets/AIGPResourceInputFacet.json",
   "$defs": {
     "AIGPResourceInputFacet": {
       "allOf": [
@@ -13,11 +13,11 @@
             "resourceType": {
               "type": "string",
               "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
-              "description": "AIGP resource type. Standard types: policy, prompt, tool, lineage, context. Custom types matching this pattern are permitted."
+              "description": "AIGP resource type. Standard types: policy, prompt, tool, lineage, context, memory, model. Custom types matching this pattern are permitted."
             },
             "resourceName": {
               "type": "string",
-              "description": "AGRN-format resource name (e.g., 'policy.trading-limits', 'context.env-config', 'lineage.upstream-orders')."
+              "description": "AGRN-format resource name (e.g., 'policy.trading-limits', 'context.env-config', 'lineage.upstream-orders', 'memory.conversation-history', 'model.gpt4-trading-v2')."
             },
             "resourceVersion": {
               "type": "integer",

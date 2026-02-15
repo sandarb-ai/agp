@@ -43,7 +43,7 @@ from aigp_otel.openlineage import (
     build_openlineage_run_event,
 )
 
-__version__ = "0.6.0"
+__version__ = "0.7.0"
 __all__ = [
     "AIGPInstrumentor",
     "create_aigp_event",

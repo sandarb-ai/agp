@@ -105,6 +105,8 @@ When a single governance operation involves multiple policies, prompts, or tools
 | `aigp.tools.names` | String[] | Governed tools invoked | `["tool.web-search", "tool.database-query"]` |
 | `aigp.contexts.names` | String[] | Governed context resources | `["context.env-config", "context.runtime-params"]` |
 | `aigp.lineages.names` | String[] | Governed lineage resources | `["lineage.upstream-orders", "lineage.credit-scores"]` |
+| `aigp.memories.names` | String[] | Governed memory resources | `["memory.conversation-history", "memory.rag-context"]` |
+| `aigp.models.names` | String[] | Governed model resources | `["model.gpt4-trading-v2", "model.llama3-fine-tuned"]` |
 
 When only a single policy or prompt is involved, implementations MAY use the singular form (`aigp.policy.name`) instead of the array form.
 
@@ -118,16 +120,18 @@ When `hash_type` is `"merkle-sha256"`, the governance hash is a Merkle root comp
 
 The full Merkle tree structure (leaf hashes, resource names, resource types) is carried in the AIGP event's `governance_merkle_tree` field rather than as OTel span attributes, to avoid excessive attribute cardinality in observability backends. The `leaf_count` attribute provides sufficient signal for dashboards and alerts (e.g., "alert when leaf_count > 10" or "histogram of resources per governance action").
 
-### 3.7 Context and Lineage Resource Attributes
+### 3.7 Context, Lineage, Memory, and Model Resource Attributes
 
-When governance operations include context or lineage resources, implementations SHOULD use the array-valued attributes:
+When governance operations include context, lineage, memory, or model resources, implementations SHOULD use the array-valued attributes:
 
 | Attribute | Type | Required | Description | Example |
 |---|---|---|---|---|
 | `aigp.contexts.names` | String[] | Conditional | Governed context resource names. Present when context resources participate in the governance action. | `["context.env-config", "context.runtime-params"]` |
 | `aigp.lineages.names` | String[] | Conditional | Governed lineage resource names. Present when lineage snapshots participate in the governance action. | `["lineage.upstream-orders", "lineage.credit-scores"]` |
+| `aigp.memories.names` | String[] | Conditional | Governed memory resource names. Present when memory resources participate in the governance action. | `["memory.conversation-history", "memory.rag-context"]` |
+| `aigp.models.names` | String[] | Conditional | Governed model resource names. Present when model resources participate in the governance action. | `["model.gpt4-trading-v2", "model.llama3-fine-tuned"]` |
 
-Context resources capture general pre-execution state (env config, runtime params). Lineage resources capture data lineage snapshots (upstream dataset provenance, DAG state). Both participate in the Merkle tree alongside policies, prompts, and tools. The `aigp.governance.merkle.leaf_count` attribute reflects the total count including context and lineage leaves.
+Context resources capture general pre-execution state (env config, runtime params). Lineage resources capture data lineage snapshots (upstream dataset provenance, DAG state). Memory resources capture agent memory state (conversation history, RAG context, session state). Model resources capture inference engine identity (model card, weights hash, config). All participate in the Merkle tree alongside policies, prompts, and tools. The `aigp.governance.merkle.leaf_count` attribute reflects the total count including all resource type leaves.
 
 ---
 
@@ -146,6 +150,20 @@ AIGP governance actions SHOULD be emitted as OTel span events. Each span event r
 | `aigp.policy.violation` | `POLICY_VIOLATION` | Governance policy violated |
 | `aigp.governance.proof` | `GOVERNANCE_PROOF` | Cryptographic proof-of-delivery recorded |
 | `aigp.a2a.call` | `A2A_CALL` | Agent-to-agent protocol call |
+| `aigp.memory.read` | `MEMORY_READ` | Agent retrieved content from memory |
+| `aigp.memory.written` | `MEMORY_WRITTEN` | Agent updated memory |
+| `aigp.tool.invoked` | `TOOL_INVOKED` | Agent invoked a governed tool |
+| `aigp.tool.denied` | `TOOL_DENIED` | Tool invocation denied by governance |
+| `aigp.context.captured` | `CONTEXT_CAPTURED` | Pre-execution context snapshot taken |
+| `aigp.lineage.snapshot` | `LINEAGE_SNAPSHOT` | Data lineage snapshot recorded |
+| `aigp.inference.started` | `INFERENCE_STARTED` | Agent began inference step |
+| `aigp.inference.completed` | `INFERENCE_COMPLETED` | Agent completed inference step |
+| `aigp.inference.blocked` | `INFERENCE_BLOCKED` | Inference blocked by governance |
+| `aigp.human.override` | `HUMAN_OVERRIDE` | Human overrode agent decision |
+| `aigp.human.approval` | `HUMAN_APPROVAL` | Human approved agent action |
+| `aigp.classification.changed` | `CLASSIFICATION_CHANGED` | Data classification level changed |
+| `aigp.model.loaded` | `MODEL_LOADED` | Agent loaded a model for inference |
+| `aigp.model.switched` | `MODEL_SWITCHED` | Agent switched to a different model |
 
 ### 4.2 Event-to-Span Mapping
 

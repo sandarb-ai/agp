@@ -1,0 +1,47 @@
+{
+  "event_id": "a4b5c6d7-e8f9-0123-abcd-ef0123456789",
+  "event_type": "INFERENCE_COMPLETED",
+  "event_category": "inference",
+  "event_time": "2026-02-15T14:30:03.678Z",
+
+  "agent_id": "agent.trading-bot-v2",
+  "agent_name": "Trading Bot",
+  "org_id": "org.finco",
+  "org_name": "FinCo",
+
+  "policy_id": "",
+  "policy_name": "",
+  "policy_version": 0,
+
+  "prompt_id": "",
+  "prompt_name": "",
+  "prompt_version": 0,
+
+  "governance_hash": "f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1",
+  "hash_type": "sha256",
+  "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+  "span_id": "33f067dd3ba902ea",
+  "parent_span_id": "00f067aa0ba902b7",
+  "trace_flags": "01",
+  "data_classification": "confidential",
+
+  "template_rendered": false,
+
+  "denial_reason": "",
+  "violation_type": "",
+  "severity": "",
+
+  "source_ip": "",
+  "request_method": "",
+  "request_path": "",
+
+  "query_hash": "",
+  "previous_hash": "",
+
+  "annotations": {
+    "model": "gpt-4",
+    "latency_ms": 1250,
+    "token_count": 384
+  },
+  "spec_version": "0.7.0"
+}

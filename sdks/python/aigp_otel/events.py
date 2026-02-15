@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 
 # Pattern for valid resource types (AIGP Spec Section 8.8.2).
-# Open pattern: lowercase kebab-case. Standard types: policy, prompt, tool, lineage, context.
+# Open pattern: lowercase kebab-case. Standard types: policy, prompt, tool, lineage, context, memory, model.
 # Implementations MAY define custom types matching this pattern.
 _RESOURCE_TYPE_PATTERN = re.compile(r"^[a-z][a-z0-9]*(-[a-z0-9]+)*$")
 
@@ -61,7 +61,7 @@ def compute_leaf_hash(
 
     Args:
         resource_type: A lowercase kebab-case string matching ^[a-z][a-z0-9]*(-[a-z0-9]+)*$.
-            Standard types: "policy", "prompt", "tool", "lineage", "context".
+            Standard types: "policy", "prompt", "tool", "lineage", "context", "memory", "model".
             Custom types (e.g., "compliance", "approval") are permitted.
         resource_name: AGRN-format name (e.g., "policy.trading-limits").
         content: The governed content string.
@@ -73,7 +73,7 @@ def compute_leaf_hash(
         raise ValueError(
             f"Invalid resource_type: {resource_type!r}. "
             "Must match pattern ^[a-z][a-z0-9]*(-[a-z0-9]+)*$ "
-            "(e.g., 'policy', 'prompt', 'tool', 'lineage', 'context', 'compliance')."
+            "(e.g., 'policy', 'prompt', 'tool', 'lineage', 'context', 'memory', 'model', 'compliance')."
         )
     prefixed = f"{resource_type}:{resource_name}:{content}"
     return hashlib.sha256(prefixed.encode("utf-8")).hexdigest()
@@ -135,7 +135,7 @@ def compute_merkle_governance_hash(
     Args:
         resources: List of (resource_type, resource_name, content) tuples.
             resource_type: Any valid type (e.g., "policy", "prompt", "tool",
-                "lineage", "context", or custom types like "compliance")
+                "lineage", "context", "memory", "model", or custom types like "compliance")
             resource_name: AGRN name (e.g., "policy.trading-limits")
             content: The governed content string
 
@@ -213,15 +213,18 @@ def create_aigp_event(
     source_ip: str = "",
     request_method: str = "",
     request_path: str = "",
+    # Memory governance fields (Section 5.4)
+    query_hash: str = "",
+    previous_hash: str = "",
     # Annotations (Section 5.7)
     annotations: Optional[dict[str, Any]] = None,
     # Version
-    spec_version: str = "0.6.0",
+    spec_version: str = "0.7.0",
     # Merkle tree (Section 8.8)
     governance_merkle_tree: Optional[dict[str, Any]] = None,
 ) -> dict[str, Any]:
     """
-    Create an AIGP event conforming to the v0.6.0 schema.
+    Create an AIGP event conforming to the v0.7.0 schema.
 
     This function creates the standalone AIGP JSON event (the governance
     record). For the OTel span event (the observability record), use
@@ -236,12 +239,14 @@ def create_aigp_event(
         span_id: OTel span ID (16-char hex). Optional.
         parent_span_id: OTel parent span ID (16-char hex). Optional.
         trace_flags: W3C trace flags (2-char hex). Optional.
+        query_hash: SHA-256 of retrieval query (MEMORY_READ). Optional.
+        previous_hash: SHA-256 of prior state (MEMORY_WRITTEN, MODEL_SWITCHED). Optional.
         annotations: Informational context (not hashed). Optional.
-        spec_version: AIGP spec version. Default "0.6.0".
+        spec_version: AIGP spec version. Default "0.7.0".
         ... (remaining fields per AIGP spec)
 
     Returns:
-        Dict conforming to AIGP event schema v0.6.0.
+        Dict conforming to AIGP event schema v0.7.0.
     """
     now = datetime.now(timezone.utc)
 
@@ -283,6 +288,9 @@ def create_aigp_event(
         "source_ip": source_ip,
         "request_method": request_method,
         "request_path": request_path,
+        # Memory governance fields (Section 5.4)
+        "query_hash": query_hash,
+        "previous_hash": previous_hash,
         # Annotations (Section 5.7) — informational, not hashed
         "annotations": annotations or {},
         # Version (Section 5.7)

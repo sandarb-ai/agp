@@ -1,6 +1,6 @@
 # AI Governance Proof (AIGP) Specification
 
-**Version:** 0.6.0 (Draft)
+**Version:** 0.7.0 (Draft)
 
 **Status:** Draft
 
@@ -53,6 +53,14 @@ Future versions of this specification may introduce breaking changes. Implemente
   - [6.6 Governance Proof Events](#66-governance-proof-events)
   - [6.7 Policy Events](#67-policy-events)
   - [6.8 Agent-to-Agent Events](#68-agent-to-agent-events)
+  - [6.9 Memory Events](#69-memory-events)
+  - [6.10 Tool Events](#610-tool-events)
+  - [6.11 Context Events](#611-context-events)
+  - [6.12 Lineage Events](#612-lineage-events)
+  - [6.13 Inference Events](#613-inference-events)
+  - [6.14 Human-in-the-Loop Events](#614-human-in-the-loop-events)
+  - [6.15 Classification Events](#615-classification-events)
+  - [6.16 Custom Event Types](#616-custom-event-types)
 - [7. Agent Governance Resource Names (AGRN)](#7-governance-resource-names-grn)
 - [8. Governance Hash Computation](#8-governance-hash-computation)
 - [9. Data Classification Levels](#9-data-classification-levels)
@@ -153,7 +161,7 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 : A cryptographic digest (by default SHA-256) computed over the governed content at the time of an action. The governance hash provides tamper evidence: if the content changes after hash computation, the hash will no longer match the content.
 
 **AGRN (Agent Governance Resource Name)**
-: A typed, kebab-case identifier for a governed resource. The format is `type.kebab-name`, where `type` is one of `agent`, `policy`, `prompt`, `context`, `lineage`, or `org`. AGRNs provide globally unique, human-readable, self-describing identifiers for use in AIGP events.
+: A typed, kebab-case identifier for a governed resource. The format is `type.kebab-name`, where `type` is one of `agent`, `policy`, `prompt`, `context`, `lineage`, `memory`, or `org`. AGRNs provide globally unique, human-readable, self-describing identifiers for use in AIGP events.
 
 **Governance Action**
 : An operation that is subject to governance controls, such as delivering a policy to an agent, using a prompt, registering an agent, or detecting a policy violation.
@@ -172,6 +180,15 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 
 **Lineage**
 : A data lineage snapshot capturing upstream dataset provenance, DAG state, or OpenLineage graph context. Unlike `"context"`, `"lineage"` has a specific meaning within AIGP: it represents a pre-execution snapshot of the data lineage that the agent was operating on, enabling bidirectional sync between AIGP governance proof and OpenLineage data lineage.
+
+**Memory**
+: An agent-defined resource representing the agent's memory state — conversation history, RAG retrieval context, vector store contents, session state, or any other form of agent memory. Like `"context"`, AIGP defines `"memory"` as a valid governed resource type but does not prescribe its contents. Each AI agent or framework decides what memory means for its use case. AIGP hashes the content and includes it in the Merkle tree governance proof, providing cryptographic evidence of what the agent remembered at decision time.
+
+**Query Hash**
+: A SHA-256 digest computed over a retrieval query (e.g., a RAG query or memory lookup). Used in `MEMORY_READ` events to prove what the agent asked for, complementing the `governance_hash` which proves what was returned.
+
+**Previous Hash**
+: A SHA-256 digest of the memory state before a write operation. Used in `MEMORY_WRITTEN` events to enable diff tracking — proving both what the memory was before and after a mutation.
 
 **Trace**
 : A correlation identifier (`trace_id`) that links all AIGP events arising from a single user request, agent execution, or governance workflow. A single trace enables end-to-end reconstruction of the governance path.
@@ -200,7 +217,7 @@ AIGP events SHOULD use a flat (non-nested) record structure. All governance-rele
 **Principle 5: Forward-Compatible Extensibility.**
 AIGP provides two extensibility primitives with distinct trust boundaries:
 
-- **Resources** are AIGP's governed extensibility primitive. Every governed artifact (policy, prompt, tool, lineage, context, or any implementation-defined type) is a resource that participates in the Merkle tree and receives a cryptographic hash. The `resource_type` field is an open pattern — implementations MAY define custom resource types without a specification change. Consumers MUST ignore resource types they do not recognize.
+- **Resources** are AIGP's governed extensibility primitive. Every governed artifact (policy, prompt, tool, lineage, context, memory, or any implementation-defined type) is a resource that participates in the Merkle tree and receives a cryptographic hash. The `resource_type` field is an open pattern — implementations MAY define custom resource types without a specification change. Consumers MUST ignore resource types they do not recognize.
 - **Annotations** are AIGP's informational extensibility primitive. The `annotations` field carries supplementary context (regulatory hooks, domain-specific tags, operational notes) that is NOT included in governance hashes and is NOT governed. Consumers MUST ignore annotation keys they do not recognize.
 
 Minor version increments (e.g., 0.6 → 0.7) MUST be additive-only: they MUST NOT remove, rename, or change the semantics of existing fields, resource types, or event types. New fields, resource types, and event types MAY be added.
@@ -262,6 +279,8 @@ The following fields relate to the cryptographic proof and traceability of the g
 | `parent_span_id` | String | `""` | The OpenTelemetry parent span ID. When present, MUST be a 16-character lowercase hexadecimal string. Enables AIGP events to participate in OTel span trees, connecting governance actions to the calling operation. See Section 11.4. |
 | `trace_flags` | String | `""` | W3C Trace Context trace-flags. When present, MUST be a 2-character lowercase hexadecimal string. `"01"` indicates the trace is sampled. Preserves OTel sampling decisions in governance records. See Section 11.4. |
 | `data_classification` | String | `""` | The classification level of the data involved in this governance action. When present, MUST be one of the values defined in Section 9. An empty string indicates that classification is not specified. |
+| `query_hash` | String | `""` | A SHA-256 hash of a retrieval query. Used in `MEMORY_READ` events to prove what the agent asked for. When present and non-empty, MUST be a 64-character lowercase hexadecimal string. Complements `governance_hash` (which proves what was returned). |
+| `previous_hash` | String | `""` | A SHA-256 hash of the resource state before a write operation. Used in `MEMORY_WRITTEN` events to enable diff tracking of memory mutations. When present and non-empty, MUST be a 64-character lowercase hexadecimal string. Together with `governance_hash` (the new state), provides a complete before/after proof. |
 
 ### 5.5 Denial and Policy Fields
 
@@ -292,13 +311,13 @@ The following fields are OPTIONAL and provide extensibility, operational timesta
 | `template_rendered` | Boolean | `false` | Indicates whether the policy content was rendered with template variables before delivery. When `true`, the `governance_hash` MUST be computed over the rendered (post-substitution) content. |
 | `ingested_at` | String (DateTime) | *(none)* | The time at which the event was received by the analytics or storage system. MUST be in RFC 3339 format with millisecond precision and UTC timezone designator `Z`. This field enables measurement of ingestion latency (`ingested_at` minus `event_time`). |
 | `annotations` | Object | `{}` | Informational context for the governance event. Annotations are NOT included in governance hashes and are NOT governed resources. Implementations MAY use this field to attach regulatory hooks, domain-specific tags, or supplementary context that does not require cryptographic proof. Consumers MUST NOT require specific keys within `annotations` to process core AIGP events. Consumers MUST ignore annotation keys they do not recognize. |
-| `spec_version` | String | `""` | The AIGP specification version the producer implemented (e.g., `"0.6.0"`). Consumers MAY use this field to determine which features and resource types to expect. When absent or empty, consumers SHOULD NOT assume any particular version. |
+| `spec_version` | String | `""` | The AIGP specification version the producer implemented (e.g., `"0.7.0"`). Consumers MAY use this field to determine which features and resource types to expect. When absent or empty, consumers SHOULD NOT assume any particular version. |
 
 ---
 
 ## 6. Event Types
 
-The AIGP specification defines 16 standard event types across 8 categories. Implementations MUST use the standard event types for the governance actions described below. Implementations MAY define additional custom event types following the naming conventions in this section.
+The AIGP specification defines 28 standard event types across 14 categories. Implementations MUST use the standard event types for the governance actions described below. Implementations MAY define additional custom event types following the naming conventions in this section.
 
 ### 6.1 Policy Injection Events
 
@@ -433,16 +452,158 @@ The AIGP specification defines 16 standard event types across 8 categories. Impl
 - **MAY be present:** `governance_hash` (if governed content is exchanged), `policy_id`, `prompt_id`, `annotations`.
 - **Notes:** Implementations MAY use the `annotations` field to record the target agent identifier, the protocol used (A2A, MCP, etc.), and the outcome of the call.
 
-### 6.9 Custom Event Types
+### 6.9 Memory Events
 
-Implementations MAY define custom event types beyond the 16 standard types. Custom event types:
+**Category:** `memory`
+
+#### MEMORY_READ
+
+- **Emitted when:** An agent retrieves content from memory (conversation history lookup, RAG retrieval, vector store query, session state read). Implementations SHOULD emit this event when an agent reads from any governed memory resource.
+- **Required fields:** All fields from Section 5.1.
+- **SHOULD be present:** `governance_hash` (non-empty, computed over the retrieved content), `query_hash` (computed over the retrieval query), `data_classification`.
+- **MAY be present:** `org_id`, `agent_name`, `annotations`.
+- **Notes:** The `query_hash` field proves what the agent asked for. The `governance_hash` proves what was returned. Together they provide a complete audit trail of memory retrieval. The content structure is agent-defined — AIGP does not prescribe what memory contains.
+
+#### MEMORY_WRITTEN
+
+- **Emitted when:** An agent updates memory (vector store write, conversation history save, session state mutation, RAG index update). Implementations SHOULD emit this event when an agent writes to any governed memory resource.
+- **Required fields:** All fields from Section 5.1.
+- **SHOULD be present:** `governance_hash` (non-empty, computed over the new memory content), `data_classification`.
+- **MAY be present:** `previous_hash` (computed over the memory state before the write), `org_id`, `agent_name`, `annotations`.
+- **Notes:** The `previous_hash` enables diff tracking: auditors can reconstruct the chain of memory state changes by following the sequence of `previous_hash` → `governance_hash` across write events. When `previous_hash` is absent, this is an initial write (no prior state).
+
+### 6.10 Tool Events
+
+**Category:** `tool`
+
+#### TOOL_INVOKED
+
+- **Emitted when:** An agent calls a governed tool. Implementations SHOULD emit this event when an agent invokes any tool that is under governance controls.
+- **Required fields:** All fields from Section 5.1.
+- **SHOULD be present:** `governance_hash` (non-empty, computed over the tool definition and/or input), `data_classification`.
+- **MAY be present:** `org_id`, `agent_name`, `annotations`.
+- **Notes:** Implementations MAY compute `governance_hash` over the tool definition, the tool input, or both (concatenated). The approach SHOULD be documented and consistently applied.
+
+#### TOOL_DENIED
+
+- **Emitted when:** An agent's attempt to invoke a tool is blocked by governance controls. Implementations MUST emit this event when a tool invocation is denied.
+- **Required fields:** All fields from Section 5.1.
+- **SHOULD be present:** `denial_reason`, `violation_type`, `severity`.
+- **Notes:** The `governance_hash` SHOULD be the empty string, as no tool execution occurred.
+
+### 6.11 Context Events
+
+**Category:** `context`
+
+#### CONTEXT_CAPTURED
+
+- **Emitted when:** A pre-execution context snapshot is taken and recorded as a governed resource. Implementations SHOULD emit this event when agent context (environment config, runtime parameters, session state) is captured for governance purposes.
+- **Required fields:** All fields from Section 5.1.
+- **SHOULD be present:** `governance_hash` (non-empty, computed over the context content), `data_classification`.
+- **MAY be present:** `org_id`, `agent_name`, `annotations`.
+- **Notes:** Context content is agent-defined — AIGP does not prescribe what goes inside. The `governance_hash` provides cryptographic proof of the exact context that was captured.
+
+### 6.12 Lineage Events
+
+**Category:** `lineage`
+
+#### LINEAGE_SNAPSHOT
+
+- **Emitted when:** A data lineage snapshot is recorded before inference. Implementations SHOULD emit this event when upstream dataset provenance, DAG state, or OpenLineage graph context is captured for governance purposes.
+- **Required fields:** All fields from Section 5.1.
+- **SHOULD be present:** `governance_hash` (non-empty, computed over the serialized lineage data), `data_classification`.
+- **MAY be present:** `org_id`, `agent_name`, `annotations`.
+- **Notes:** Lineage resources have AIGP-defined semantics: they represent pre-execution snapshots of data lineage for bidirectional sync with OpenLineage. The `governance_hash` provides tamper evidence — if the upstream data changes after the snapshot, the hash won't match.
+
+### 6.13 Inference Events
+
+**Category:** `inference`
+
+#### INFERENCE_STARTED
+
+- **Emitted when:** An agent begins an inference or reasoning step. Implementations SHOULD emit this event at the start of an LLM call or other inference operation.
+- **Required fields:** All fields from Section 5.1.
+- **SHOULD be present:** `governance_hash` (non-empty, computed over the inference input), `data_classification`.
+- **MAY be present:** `org_id`, `agent_name`, `annotations`.
+- **Notes:** The `governance_hash` proves the exact input to the inference step. Together with `INFERENCE_COMPLETED`, this provides a complete input/output audit trail.
+
+#### INFERENCE_COMPLETED
+
+- **Emitted when:** An agent finishes an inference or reasoning step. Implementations SHOULD emit this event when an LLM call or other inference operation completes successfully.
+- **Required fields:** All fields from Section 5.1.
+- **SHOULD be present:** `governance_hash` (non-empty, computed over the inference output), `data_classification`.
+- **MAY be present:** `org_id`, `agent_name`, `annotations`.
+- **Notes:** The `governance_hash` proves the exact output of the inference step. Implementations MAY include model metadata (model name, version, parameters) in `annotations`.
+
+#### INFERENCE_BLOCKED
+
+- **Emitted when:** An inference step is stopped by safety or governance controls before completion. Implementations MUST emit this event when an inference operation is blocked.
+- **Required fields:** All fields from Section 5.1.
+- **SHOULD be present:** `denial_reason`, `violation_type`, `severity`.
+- **Notes:** The `governance_hash` SHOULD be the empty string. Implementations SHOULD set `severity` to reflect the reason for blocking (e.g., `"critical"` for safety filter triggers, `"high"` for policy violations).
+
+### 6.14 Human-in-the-Loop Events
+
+**Category:** `human`
+
+#### HUMAN_OVERRIDE
+
+- **Emitted when:** A human overrides an agent's decision or action. Implementations SHOULD emit this event when a human intervenes in an agent's workflow to change, reject, or replace the agent's output.
+- **Required fields:** All fields from Section 5.1.
+- **SHOULD be present:** `denial_reason` (explaining the override rationale).
+- **MAY be present:** `data_classification`, `annotations`.
+- **Notes:** This event type supports GDPR Article 22 compliance (right to human intervention in automated decision-making). Implementations SHOULD record the human's identity in `annotations` (e.g., `annotations.reviewer_id`).
+
+#### HUMAN_APPROVAL
+
+- **Emitted when:** A human approves an agent's proposed action before execution. Implementations SHOULD emit this event when a human explicitly approves an agent's output or decision.
+- **Required fields:** All fields from Section 5.1.
+- **SHOULD be present:** `governance_hash` (non-empty, computed over the approved action or content), `data_classification`.
+- **MAY be present:** `annotations`.
+- **Notes:** Implementations SHOULD record the approver's identity in `annotations` (e.g., `annotations.approver_id`).
+
+### 6.15 Classification Events
+
+**Category:** `classification`
+
+#### CLASSIFICATION_CHANGED
+
+- **Emitted when:** The data classification level of a governed resource changes. Implementations SHOULD emit this event when data is reclassified (e.g., from `confidential` to `restricted`, or from `internal` to `public`).
+- **Required fields:** All fields from Section 5.1.
+- **SHOULD be present:** `data_classification` (the new classification level).
+- **MAY be present:** `annotations` (SHOULD include `annotations.previous_classification`).
+- **Notes:** Implementations SHOULD record both the new classification (`data_classification` field) and the previous classification (`annotations.previous_classification`) to maintain a complete reclassification audit trail.
+
+### 6.16 Model Events
+
+**Category:** `model`
+
+#### MODEL_LOADED
+
+- **Emitted when:** An agent loads or initializes a model for inference. Implementations SHOULD emit this event when a model is loaded into memory and ready for use.
+- **Required fields:** All fields from Section 5.1.
+- **SHOULD be present:** `governance_hash` (non-empty, computed over the model card, configuration, or weights hash), `data_classification`.
+- **MAY be present:** `annotations`.
+- **Notes:** The content hashed for `governance_hash` is agent-defined: it MAY be a model card, a configuration file, a weights hash, LoRA adapter metadata, or any combination. Implementations SHOULD document what content is hashed. Model identity metadata (model name, version, provider, quantization) SHOULD be recorded in `annotations`.
+
+#### MODEL_SWITCHED
+
+- **Emitted when:** An agent switches from one model to another during a session. Implementations SHOULD emit this event when the active model changes mid-workflow.
+- **Required fields:** All fields from Section 5.1.
+- **SHOULD be present:** `governance_hash` (non-empty, computed over the new model's card or configuration), `previous_hash` (computed over the previous model's card or configuration).
+- **MAY be present:** `data_classification`, `annotations`.
+- **Notes:** The `previous_hash` field records the prior model's identity, enabling auditors to track the complete model lineage within a session. Implementations SHOULD record both model identifiers in `annotations` (e.g., `annotations.previous_model`, `annotations.new_model`).
+
+### 6.17 Custom Event Types
+
+Implementations MAY define custom event types beyond the 30 standard types. Custom event types:
 
 - MUST follow the `RESOURCE_ACTION` naming convention in UPPER_SNAKE_CASE.
 - MUST match the pattern `^[A-Z][A-Z0-9_]*$`.
 - SHOULD use a category string that groups logically related events.
-- MUST NOT redefine the semantics of the 16 standard event types.
+- MUST NOT redefine the semantics of the 30 standard event types.
 
-Examples of domain-specific custom event types include `PATIENT_DATA_ACCESSED`, `CONSENT_VERIFIED`, `MODEL_INFERENCE_LOGGED`, and `TRADE_EXECUTION_AUDITED`.
+Examples of domain-specific custom event types include `PATIENT_DATA_ACCESSED`, `CONSENT_VERIFIED`, and `TRADE_EXECUTION_AUDITED`.
 
 ---
 
@@ -475,6 +636,8 @@ Where:
 | Prompt | `prompt.` | `prompt.customer-support-v3` |
 | Context | `context.` | `context.env-config` |
 | Lineage | `lineage.` | `lineage.upstream-orders` |
+| Memory | `memory.` | `memory.conversation-history` |
+| Model | `model.` | `model.gpt4-trading-v2` |
 | Organization | `org.` | `org.finco` |
 
 ### 7.4 Naming Rules
@@ -484,7 +647,7 @@ Where:
 3. The `kebab-name` MUST NOT begin or end with a hyphen.
 4. The `kebab-name` MUST NOT contain consecutive hyphens (`--`).
 5. The `kebab-name` MUST be at least one character long.
-6. The type prefix (`agent.`, `policy.`, `prompt.`, `context.`, `lineage.`, `org.`) MUST be included as part of the AGRN and makes the resource self-describing in any AIGP event or log line.
+6. The type prefix (`agent.`, `policy.`, `prompt.`, `context.`, `lineage.`, `memory.`, `model.`, `org.`) MUST be included as part of the AGRN and makes the resource self-describing in any AIGP event or log line.
 7. The complete AGRN MUST match the regular expression: `^(agent|policy|prompt|context|lineage|org)\.[a-z][a-z0-9]*(-[a-z0-9]+)*$`.
 
 ### 7.5 Usage
@@ -551,8 +714,8 @@ leaf_hash = SHA-256(UTF-8(resource_type + ":" + resource_name + ":" + content))
 ```
 
 Where:
-- `resource_type` MUST match the pattern `^[a-z][a-z0-9]*(-[a-z0-9]+)*$`. Standard types defined by this specification are `"policy"`, `"prompt"`, `"tool"`, `"lineage"`, and `"context"`. Implementations MAY define custom resource types matching this pattern. Consumers MUST ignore resource types they do not recognize.
-- `resource_name` is the AGRN-format name (e.g., `"policy.trading-limits"`, `"lineage.upstream-orders"`, `"context.env-config"`).
+- `resource_type` MUST match the pattern `^[a-z][a-z0-9]*(-[a-z0-9]+)*$`. Standard types defined by this specification are `"policy"`, `"prompt"`, `"tool"`, `"lineage"`, `"context"`, `"memory"`, and `"model"`. Implementations MAY define custom resource types matching this pattern. Consumers MUST ignore resource types they do not recognize.
+- `resource_name` is the AGRN-format name (e.g., `"policy.trading-limits"`, `"memory.conversation-history"`, `"model.gpt4-trading-v2"`).
 - `content` is the governed content string for that resource.
 - The `":"` separator is the literal colon character (U+003A).
 
@@ -591,7 +754,7 @@ When `hash_type` is `"merkle-sha256"`, the event SHOULD include a top-level `gov
 {
   "governance_merkle_tree": {
     "algorithm": "sha256",
-    "leaf_count": 5,
+    "leaf_count": 7,
     "leaves": [
       {
         "resource_type": "policy",
@@ -617,6 +780,16 @@ When `hash_type` is `"merkle-sha256"`, the event SHOULD include a top-level `gov
         "resource_type": "lineage",
         "resource_name": "lineage.upstream-orders",
         "hash": "d7e8f9a0..."
+      },
+      {
+        "resource_type": "memory",
+        "resource_name": "memory.conversation-history",
+        "hash": "e1f2a3b4..."
+      },
+      {
+        "resource_type": "model",
+        "resource_name": "model.gpt4-trading-v2",
+        "hash": "f5a6b7c8..."
       }
     ]
   }
@@ -628,7 +801,7 @@ When `hash_type` is `"merkle-sha256"`, the event SHOULD include a top-level `gov
 - `leaves` — An array of leaf objects sorted by `hash` value (lexicographic ascending). This is the same sort order used during tree construction (Section 8.8.3 step 2).
 
 Each leaf object MUST contain:
-- `resource_type` — A string matching the pattern `^[a-z][a-z0-9]*(-[a-z0-9]+)*$`. Standard types are `"policy"`, `"prompt"`, `"tool"`, `"lineage"`, and `"context"`. Custom types are permitted.
+- `resource_type` — A string matching the pattern `^[a-z][a-z0-9]*(-[a-z0-9]+)*$`. Standard types are `"policy"`, `"prompt"`, `"tool"`, `"lineage"`, `"context"`, `"memory"`, and `"model"`. Custom types are permitted.
 - `resource_name` — AGRN-format resource name.
 - `hash` — The 64-character lowercase hexadecimal leaf hash computed per Section 8.8.2.
 
@@ -827,15 +1000,19 @@ tracestate: aigp=cls:con;pol:policy.trading-limits;ver:4,dd=s:1
 
 AIGP events capture AI governance actions. OpenLineage events capture data lineage (what data flowed where, transformed by what). When both systems are present, they SHOULD be correlated so that governance proof can be linked to the data lineage context that the agent was operating on.
 
-#### 11.8.1 Context and Lineage Resources
+#### 11.8.1 Context, Lineage, Memory, and Model Resources
 
-Two resource types enable pre-execution inputs to participate in the Merkle tree governance hash:
+Four resource types enable pre-execution and runtime inputs to participate in the Merkle tree governance hash:
 
 **Context resources** (`"context"`) are general-purpose and agent-defined. AIGP provides the `"context"` resource type as a governed extension point — the specification does not prescribe what goes inside a context resource. Each AI agent or framework determines the semantics: environment configuration, runtime parameters, session state, model hyperparameters, or any other pre-execution input relevant to that agent's governance needs. AIGP hashes the content into the Merkle tree and provides the cryptographic proof; the agent owns the meaning. Context resources SHOULD use the AGRN format `context.<kebab-name>` (e.g., `context.env-config`, `context.runtime-params`).
 
 **Lineage resources** (`"lineage"`) have a specific, AIGP-defined meaning: they capture data lineage snapshots for bidirectional sync with OpenLineage. A lineage resource represents a pre-execution snapshot of upstream dataset provenance, DAG state, or OpenLineage graph context. Lineage resources SHOULD use the AGRN format `lineage.<kebab-name>` (e.g., `lineage.upstream-orders`, `lineage.credit-scores`). The content of a lineage resource is typically a JSON-serialized snapshot of the upstream data lineage at the time of the governance action, providing tamper-proof evidence of what data context the agent was operating on.
 
-The content of both resource types SHOULD be JSON-serialized. Implementations MUST compute the leaf hash over this serialized content per Section 8.8.2.
+**Memory resources** (`"memory"`) are agent-defined, like context. AIGP defines `"memory"` as a valid governed resource type but does not prescribe its contents — each AI agent or framework decides what memory means for its use case (conversation history, RAG retrieval chunks, session state, agent reasoning traces, etc.). AIGP hashes the content and includes it in the Merkle tree governance proof, providing cryptographic evidence of what the agent remembered at decision time. Memory resources SHOULD use the AGRN format `memory.<kebab-name>` (e.g., `memory.conversation-history`, `memory.rag-context`, `memory.agent-state`). For reproducible hashes, implementations SHOULD use deterministic serialization (sorted JSON keys, no optional whitespace).
+
+**Model resources** (`"model"`) capture the identity and configuration of the inference engine used by an agent. The content is agent-defined: it MAY be a model card, a configuration file, a weights hash, LoRA adapter metadata, quantization settings, or any combination that uniquely identifies the model state. AIGP hashes this content to provide cryptographic proof of which model was used at decision time. Model resources SHOULD use the AGRN format `model.<kebab-name>` (e.g., `model.gpt4-trading-v2`, `model.llama3-fine-tuned`).
+
+The content of all four resource types SHOULD be JSON-serialized. Implementations MUST compute the leaf hash over this serialized content per Section 8.8.2. For reproducible hashes across implementations, deterministic serialization is RECOMMENDED (sorted keys, no optional whitespace).
 
 #### 11.8.2 Custom Facets
 
@@ -846,7 +1023,7 @@ AIGP defines two OpenLineage custom facets for attaching AI governance metadata 
 
 The facet schemas are maintained at `integrations/openlineage/facets/`.
 
-Standard OpenLineage backends will display governed resources as generic datasets. For native AI governance rendering, implementations SHOULD use the `aigp_resource.resourceType` facet to distinguish policies, prompts, tools, contexts, and lineage resources.
+Standard OpenLineage backends will display governed resources as generic datasets. For native AI governance rendering, implementations SHOULD use the `aigp_resource.resourceType` facet to distinguish policies, prompts, tools, contexts, lineage, memory, and model resources.
 
 #### 11.8.3 Correlation
 
@@ -891,7 +1068,7 @@ This specification defines three conformance levels. Implementations MUST declar
 An implementation conforms to the **Core** level if it satisfies all of the following:
 
 1. Every produced AIGP event MUST contain all required fields as defined in Section 5.1 (`event_id`, `event_type`, `event_category`, `event_time`, `agent_id`, `governance_hash`, `trace_id`).
-2. The `event_type` field MUST contain a valid event type: either one of the 16 standard types defined in Section 6, or a custom type conforming to the naming rules in Section 6.9.
+2. The `event_type` field MUST contain a valid event type: either one of the 30 standard types defined in Section 6, or a custom type conforming to the naming rules in Section 6.17.
 3. The `event_id` MUST be a valid UUID v4.
 4. The `event_time` MUST be a valid RFC 3339 DateTime with millisecond precision and UTC timezone designator.
 5. The `governance_hash`, when non-empty, MUST be a valid lowercase hexadecimal SHA-256 digest (64 characters).
@@ -1092,7 +1269,9 @@ The following is a fully annotated AIGP event representing a successful policy i
   "ingested_at": "2025-01-15T14:30:01.456Z",
 
   "annotations": {"regulatory_hooks": ["FINRA", "SEC"]},
-  "spec_version": "0.6.0"
+  "query_hash": "",
+  "previous_hash": "",
+  "spec_version": "0.7.0"
 }
 ```
 
@@ -1124,7 +1303,9 @@ The following is a fully annotated AIGP event representing a successful policy i
 | `request_path` | The API endpoint that was called to retrieve the policy. |
 | `ingested_at` | Timestamp when the analytics system received this event (1.333 seconds after `event_time`). |
 | `annotations` | Informational context: regulatory hooks. Not included in governance hash. |
-| `spec_version` | `0.6.0` -- the AIGP specification version the producer implemented. |
+| `query_hash` | Empty -- not a memory read event. |
+| `previous_hash` | Empty -- not a memory write or model switch event. |
+| `spec_version` | `0.7.0` -- the AIGP specification version the producer implemented. |
 
 ---
 
@@ -1132,6 +1313,7 @@ The following is a fully annotated AIGP event representing a successful policy i
 
 | Version | Date | Changes |
 |---|---|---|
+| 0.7.0 | 2026-02-15 | Memory + Model resource types. Adds `"memory"` (agent-defined dynamic state, RAG retrieval) and `"model"` (inference engine identity) as standard governed resource types. 14 new event types (total: 30 across 14 categories): MEMORY_READ, MEMORY_WRITTEN, TOOL_INVOKED, TOOL_DENIED, CONTEXT_CAPTURED, LINEAGE_SNAPSHOT, INFERENCE_STARTED, INFERENCE_COMPLETED, INFERENCE_BLOCKED, HUMAN_OVERRIDE, HUMAN_APPROVAL, CLASSIFICATION_CHANGED, MODEL_LOADED, MODEL_SWITCHED. New fields: `query_hash` (MEMORY_READ), `previous_hash` (MEMORY_WRITTEN, MODEL_SWITCHED). AGRN `memory.` and `model.` prefixes. OTel attributes `aigp.memories.names`, `aigp.models.names`. Backward compatible: existing events unchanged. |
 | 0.6.0 | 2026-02-15 | Resources + Annotations extensibility model. Renames `metadata` field to `annotations` (informational, unhashed context). Removes `ext_` extension field prefix mechanism. Opens `resource_type` from closed enum to open pattern — implementations may define custom resource types. Adds `spec_version` optional field. Adds must-ignore rule for unknown resource types and annotation keys. Adds additive-only minor version guarantee. Rewrites Principle 5 as "Forward-Compatible Extensibility." |
 | 0.5.0 | 2026-02-15 | OpenLineage integration. Adds `"context"` (general pre-execution state) and `"lineage"` (data lineage snapshots) resource types for Merkle tree leaves. New Section 11.8: OpenLineage Data Lineage Integration (context/lineage resources, custom facets, emission granularity, active vs. passive lineage, triple-emit architecture). Custom facet schemas: AIGPGovernanceRunFacet, AIGPResourceInputFacet. Python SDK: `openlineage` module with `build_governance_run_facet()`, `build_resource_input_facets()`, `build_openlineage_run_event()`. Optional `openlineage_callback` on AIGPInstrumentor. AGRN `context.` and `lineage.` prefixes. OTel attributes `aigp.contexts.names`, `aigp.lineages.names`. Backward compatible: existing events unchanged. |
 | 0.4.0 | 2026-02-15 | Merkle tree governance hash. Adds `governance_merkle_tree` optional field. New `hash_type` value `"merkle-sha256"`. Section 8.8 defines leaf construction, tree algorithm, and verification. OTel attribute `aigp.governance.merkle.leaf_count`. Backward compatible: single-resource events unchanged. |

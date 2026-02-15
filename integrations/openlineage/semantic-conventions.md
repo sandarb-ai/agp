@@ -51,19 +51,21 @@ The run facet provides the summary (hash, enforcement result, classification). T
 |---|---|---|---|---|
 | `_producer` | String (URI) | Yes | URI identifying the producer | `"https://github.com/sandarb-ai/aigp"` |
 | `_schemaURL` | String (URI) | Yes | JSON Pointer to schema version | `"https://github.com/sandarb-ai/aigp/blob/v0.5.0/..."` |
-| `resourceType` | String | Yes | `"policy"`, `"prompt"`, `"tool"`, `"context"`, or `"lineage"` | `"lineage"` |
+| `resourceType` | String | Yes | `"policy"`, `"prompt"`, `"tool"`, `"context"`, `"lineage"`, `"memory"`, or `"model"` | `"memory"` |
 | `resourceName` | String | Yes | AGRN-format resource name | `"lineage.upstream-orders"` |
 | `resourceVersion` | Int | No | Version at time of governance action | `4` |
 | `leafHash` | String | No | Merkle leaf hash (64-char hex) | `"b2e4..."` |
 
 ---
 
-## 5. Context and Lineage Resources as Governed Inputs
+## 5. Context, Lineage, Memory, and Model Resources as Governed Inputs
 
-Two resource types enable pre-execution inputs to participate in the Merkle tree:
+Four resource types enable pre-execution and runtime inputs to participate in the Merkle tree:
 
 - **`"context"`** — agent-defined, general-purpose. AIGP does not prescribe what goes inside — each AI agent or framework determines the semantics (env config, runtime params, session state, etc.). AIGP hashes it; the agent owns the meaning.
 - **`"lineage"`** — AIGP-defined, specific meaning. Data lineage snapshots: upstream dataset provenance, DAG state, OpenLineage graph context. Used for bidirectional sync between AIGP and OpenLineage.
+- **`"memory"`** — agent-defined, like context. Agent memory state: conversation history, RAG retrieval context, vector store contents, session state. AIGP hashes it; the agent defines the semantics.
+- **`"model"`** — agent-defined. Inference engine identity: model card, weights hash, configuration, LoRA adapters. Provides cryptographic proof of which model was used at decision time.
 
 Before an agent runs, you can:
 
@@ -80,6 +82,8 @@ resources = [
     ("prompt", "prompt.scoring-v3", prompt_content),
     ("context", "context.env-config", env_config_json),
     ("lineage", "lineage.upstream-orders", lineage_snapshot_json),
+    ("memory", "memory.conversation-history", memory_json),
+    ("model", "model.gpt4-trading-v2", model_config_json),
 ]
 root, tree = compute_merkle_governance_hash(resources)
 ```

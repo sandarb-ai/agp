@@ -1,0 +1,47 @@
+{
+  "event_id": "d1e2f3a4-b5c6-7890-abcd-ef0123456789",
+  "event_type": "MEMORY_READ",
+  "event_category": "memory",
+  "event_time": "2026-02-15T14:30:00.456Z",
+
+  "agent_id": "agent.trading-bot-v2",
+  "agent_name": "Trading Bot",
+  "org_id": "org.finco",
+  "org_name": "FinCo",
+
+  "policy_id": "",
+  "policy_name": "",
+  "policy_version": 0,
+
+  "prompt_id": "",
+  "prompt_name": "",
+  "prompt_version": 0,
+
+  "governance_hash": "b7e8f9a0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7",
+  "hash_type": "sha256",
+  "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+  "span_id": "00f067aa0ba902b7",
+  "parent_span_id": "",
+  "trace_flags": "01",
+  "data_classification": "confidential",
+
+  "template_rendered": false,
+
+  "denial_reason": "",
+  "violation_type": "",
+  "severity": "",
+
+  "source_ip": "",
+  "request_method": "",
+  "request_path": "",
+
+  "query_hash": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1",
+  "previous_hash": "",
+
+  "annotations": {
+    "memory_type": "conversation-history",
+    "retrieval_method": "semantic-search",
+    "result_count": 5
+  },
+  "spec_version": "0.7.0"
+}

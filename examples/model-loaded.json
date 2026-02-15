@@ -1,0 +1,49 @@
+{
+  "event_id": "b5c6d7e8-f9a0-1234-abcd-ef0123456789",
+  "event_type": "MODEL_LOADED",
+  "event_category": "model",
+  "event_time": "2026-02-15T14:29:59.000Z",
+
+  "agent_id": "agent.trading-bot-v2",
+  "agent_name": "Trading Bot",
+  "org_id": "org.finco",
+  "org_name": "FinCo",
+
+  "policy_id": "",
+  "policy_name": "",
+  "policy_version": 0,
+
+  "prompt_id": "",
+  "prompt_name": "",
+  "prompt_version": 0,
+
+  "governance_hash": "a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2",
+  "hash_type": "sha256",
+  "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+  "span_id": "44f067ee4ba902fb",
+  "parent_span_id": "",
+  "trace_flags": "01",
+  "data_classification": "internal",
+
+  "template_rendered": false,
+
+  "denial_reason": "",
+  "violation_type": "",
+  "severity": "",
+
+  "source_ip": "",
+  "request_method": "",
+  "request_path": "",
+
+  "query_hash": "",
+  "previous_hash": "",
+
+  "annotations": {
+    "provider": "openai",
+    "model_name": "gpt-4",
+    "model_version": "2024-01",
+    "purpose": "trading-analysis",
+    "quantization": "none"
+  },
+  "spec_version": "0.7.0"
+}

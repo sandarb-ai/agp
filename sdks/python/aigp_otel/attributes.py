@@ -59,6 +59,8 @@ class AIGPAttributes:
     TOOLS_NAMES = "aigp.tools.names"
     CONTEXTS_NAMES = "aigp.contexts.names"
     LINEAGES_NAMES = "aigp.lineages.names"
+    MEMORIES_NAMES = "aigp.memories.names"
+    MODELS_NAMES = "aigp.models.names"
 
     # -------------------------------------------------------
     # Span Attributes: Merkle Tree Governance
@@ -82,6 +84,20 @@ class AIGPAttributes:
     EVENT_POLICY_VIOLATION = "aigp.policy.violation"
     EVENT_GOVERNANCE_PROOF = "aigp.governance.proof"
     EVENT_A2A_CALL = "aigp.a2a.call"
+    EVENT_MEMORY_READ = "aigp.memory.read"
+    EVENT_MEMORY_WRITTEN = "aigp.memory.written"
+    EVENT_TOOL_INVOKED = "aigp.tool.invoked"
+    EVENT_TOOL_DENIED = "aigp.tool.denied"
+    EVENT_CONTEXT_CAPTURED = "aigp.context.captured"
+    EVENT_LINEAGE_SNAPSHOT = "aigp.lineage.snapshot"
+    EVENT_INFERENCE_STARTED = "aigp.inference.started"
+    EVENT_INFERENCE_COMPLETED = "aigp.inference.completed"
+    EVENT_INFERENCE_BLOCKED = "aigp.inference.blocked"
+    EVENT_HUMAN_OVERRIDE = "aigp.human.override"
+    EVENT_HUMAN_APPROVAL = "aigp.human.approval"
+    EVENT_CLASSIFICATION_CHANGED = "aigp.classification.changed"
+    EVENT_MODEL_LOADED = "aigp.model.loaded"
+    EVENT_MODEL_SWITCHED = "aigp.model.switched"
 
     # -------------------------------------------------------
     # Enforcement result values

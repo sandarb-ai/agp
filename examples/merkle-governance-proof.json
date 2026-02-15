@@ -38,11 +38,11 @@
   "annotations": {
     "regulatory_hooks": ["CCPA", "PCI-DSS"]
   },
-  "spec_version": "0.6.0",
+  "spec_version": "0.7.0",
 
   "governance_merkle_tree": {
     "algorithm": "sha256",
-    "leaf_count": 7,
+    "leaf_count": 9,
     "leaves": [
       {
         "resource_type": "policy",
@@ -60,6 +60,11 @@
         "hash": "3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a"
       },
       {
+        "resource_type": "memory",
+        "resource_name": "memory.conversation-history",
+        "hash": "4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c"
+      },
+      {
         "resource_type": "tool",
         "resource_name": "tool.order-lookup",
         "hash": "5769525038c226978cb78b401f0c62c00442b5b6c48f0a9cb9a7cff504f75366"
@@ -68,6 +73,11 @@
         "resource_type": "prompt",
         "resource_name": "prompt.customer-support-v3",
         "hash": "6db68d9c3b408fc19a6b38cc7ab2e2ad5de15cd2017dac4496ccc34c1d1f7329"
+      },
+      {
+        "resource_type": "model",
+        "resource_name": "model.gpt4-support-v2",
+        "hash": "7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e"
       },
       {
         "resource_type": "lineage",

@@ -28,18 +28,20 @@ Three Layers, One trace_id
     | Observability    | OTel        | Agent latency, errors, trace topology               |
     | Lineage          | OpenLineage | What data flowed where, governed by what             |
 
-Five Governed Resource Types
-----------------------------
+Seven Governed Resource Types
+-----------------------------
 
-AIGP governs five resource types, each with domain-separated hashing:
+AIGP governs seven resource types, each with domain-separated hashing:
 
-    | Type      | Prefix    | Semantics           | Who Defines It |
-    |-----------|-----------|---------------------|----------------|
-    | policy    | policy.   | Governance rules    | AIGP           |
-    | prompt    | prompt.   | System prompts      | AIGP           |
-    | tool      | tool.     | Tool definitions    | AIGP           |
-    | context   | context.  | Pre-exec context    | Agent-defined  |
-    | lineage   | lineage.  | Data lineage        | AIGP-defined   |
+    | Type      | Prefix    | Semantics              | Who Defines It |
+    |-----------|-----------|------------------------|----------------|
+    | policy    | policy.   | Governance rules       | AIGP           |
+    | prompt    | prompt.   | System prompts         | AIGP           |
+    | tool      | tool.     | Tool definitions       | AIGP           |
+    | lineage   | lineage.  | Data lineage           | AIGP-defined   |
+    | context   | context.  | Pre-exec context       | Agent-defined  |
+    | memory    | memory.   | Agent memory state     | Agent-defined  |
+    | model     | model.    | Model identity         | Agent-defined  |
 
     "context" — General-purpose, agent-defined. AIGP does not prescribe what goes
     inside. Each AI agent or framework determines its semantics (env config,
@@ -49,10 +51,18 @@ AIGP governs five resource types, each with domain-separated hashing:
     dataset provenance, DAG state, OpenLineage graph context. Used for bidirectional
     sync between AIGP governance proof and OpenLineage data lineage.
 
+    "memory" — Agent-defined, dynamic state. Conversation history, RAG retrieval
+    results, session state, vector store queries/writes. AIGP hashes the content
+    (and optionally the query); the agent owns the memory semantics.
+
+    "model" — Agent-defined, inference engine identity. Model card, weights hash,
+    LoRA adapter config, quantization settings. Proves which model was active
+    at decision time.
+
 Scenarios
 ---------
 
-This example walks through 9 scenarios, each building on the previous:
+This example walks through 13 scenarios, each building on the previous:
 
     1. OTel tracer initialization with AIGP Resource attributes (agent identity)
     2. Single policy injection — SHA-256 hash, dual-emit (AIGP event + OTel span)
@@ -62,7 +72,11 @@ This example walks through 9 scenarios, each building on the previous:
     6. Agent-to-agent (A2A) call — W3C Baggage propagation of governance context
     7. tracestate vendor key — lightweight governance signaling via W3C tracestate
     8. Merkle tree governance proof — multi-resource cryptographic verification
-    9. OpenLineage triple-emit — full three-layer integration with all 5 resource types
+    9. OpenLineage triple-emit — full three-layer integration with all resource types
+    10. Memory governance — MEMORY_READ + MEMORY_WRITTEN with query_hash, previous_hash
+    11. Tool governance — TOOL_INVOKED event
+    12. Inference lifecycle — INFERENCE_STARTED → INFERENCE_COMPLETED
+    13. Model governance — MODEL_LOADED + MODEL_SWITCHED with previous_hash
 
 Run
 ---
@@ -179,7 +193,7 @@ def main():
     provider.add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter()))
     trace.set_tracer_provider(provider)
 
-    tracer = trace.get_tracer("aigp.example", "0.6.0")
+    tracer = trace.get_tracer("aigp.example", "0.7.0")
 
     # =====================================================================
     # Scenario 2: Single Policy Injection
@@ -645,6 +659,138 @@ def main():
     #
 
     # =====================================================================
+    # Scenario 10: Memory Governance
+    # =====================================================================
+    #
+    # When an agent retrieves from memory (RAG, conversation history, etc.),
+    # AIGP records both:
+    #   - query_hash: SHA-256 of the retrieval query (proves what was asked)
+    #   - governance_hash: SHA-256 of the returned content (proves what was received)
+    #
+    # When an agent writes to memory, AIGP records:
+    #   - governance_hash: SHA-256 of the new content
+    #   - previous_hash: SHA-256 of the prior content (enables diff tracking)
+    #
+    print("\n=== Scenario 10: Memory Governance ===")
+
+    with tracer.start_as_current_span("memory.read") as span:
+        event = instrumentor.memory_read(
+            memory_name="memory.conversation-history",
+            query="What trading limits apply to this customer?",
+            content='[{"role": "user", "content": "Buy 500 AAPL"}, {"role": "assistant", "content": "Processing..."}]',
+            data_classification="confidential",
+            span=span,
+        )
+        print(f"\n  MEMORY_READ:")
+        print(f"    query_hash:      {event['query_hash'][:16]}...")
+        print(f"    governance_hash: {event['governance_hash'][:16]}...")
+
+    with tracer.start_as_current_span("memory.write") as span:
+        old_state = '{"portfolio": {"AAPL": 200}}'
+        new_state = '{"portfolio": {"AAPL": 700}}'
+        event = instrumentor.memory_written(
+            memory_name="memory.agent-state",
+            content=new_state,
+            previous_content=old_state,
+            data_classification="confidential",
+            span=span,
+        )
+        print(f"\n  MEMORY_WRITTEN:")
+        print(f"    governance_hash: {event['governance_hash'][:16]}... (new state)")
+        print(f"    previous_hash:   {event['previous_hash'][:16]}... (old state)")
+
+    # =====================================================================
+    # Scenario 11: Tool Governance
+    # =====================================================================
+    #
+    # When an agent invokes a governed tool, AIGP records the tool definition
+    # and input as the governed content.
+    #
+    print("\n=== Scenario 11: Tool Governance ===")
+
+    with tracer.start_as_current_span("tool.invoke") as span:
+        event = instrumentor.tool_invoked(
+            tool_name="tool.order-lookup",
+            tool_version=2,
+            content='{"tool": "order-lookup", "input": {"order_id": "ORD-12345"}}',
+            data_classification="internal",
+            span=span,
+        )
+        print(f"\n  TOOL_INVOKED:")
+        print(f"    governance_hash: {event['governance_hash'][:16]}...")
+
+    # =====================================================================
+    # Scenario 12: Inference Lifecycle
+    # =====================================================================
+    #
+    # AIGP tracks the full inference lifecycle:
+    #   - INFERENCE_STARTED: hash of the input (proves what was sent to the model)
+    #   - INFERENCE_COMPLETED: hash of the output (proves what the model returned)
+    #
+    # Together these form a before/after governance proof for every inference step.
+    #
+    print("\n=== Scenario 12: Inference Lifecycle ===")
+
+    with tracer.start_as_current_span("inference") as span:
+        input_content = "User: Buy 1000 shares of AAPL. System: Checking position limits..."
+        started = instrumentor.inference_started(
+            content=input_content,
+            data_classification="confidential",
+            span=span,
+        )
+        print(f"\n  INFERENCE_STARTED:")
+        print(f"    governance_hash: {started['governance_hash'][:16]}... (input)")
+
+        output_content = "Order placed: BUY 1000 AAPL @ $180.50. Position within limits."
+        completed = instrumentor.inference_completed(
+            content=output_content,
+            data_classification="confidential",
+            span=span,
+        )
+        print(f"\n  INFERENCE_COMPLETED:")
+        print(f"    governance_hash: {completed['governance_hash'][:16]}... (output)")
+
+    # =====================================================================
+    # Scenario 13: Model Governance
+    # =====================================================================
+    #
+    # AIGP tracks which model was active at decision time:
+    #   - MODEL_LOADED: Records the model identity when first loaded
+    #   - MODEL_SWITCHED: Records model changes mid-session with previous_hash
+    #
+    print("\n=== Scenario 13: Model Governance ===")
+
+    with tracer.start_as_current_span("model.lifecycle") as span:
+        old_model = '{"model": "gpt-4", "version": "2024-01", "temperature": 0.7}'
+        new_model = '{"model": "gpt-4-turbo", "version": "2024-04", "temperature": 0.5}'
+
+        loaded = instrumentor.model_loaded(
+            model_name="model.gpt4-trading-v2",
+            content=old_model,
+            data_classification="internal",
+            annotations={"provider": "openai", "purpose": "trading-analysis"},
+            span=span,
+        )
+        print(f"\n  MODEL_LOADED:")
+        print(f"    governance_hash: {loaded['governance_hash'][:16]}...")
+
+        switched = instrumentor.model_switched(
+            model_name="model.gpt4-turbo-trading",
+            content=new_model,
+            previous_content=old_model,
+            data_classification="internal",
+            annotations={
+                "previous_model": "model.gpt4-trading-v2",
+                "new_model": "model.gpt4-turbo-trading",
+                "reason": "Upgraded for faster inference",
+            },
+            span=span,
+        )
+        print(f"\n  MODEL_SWITCHED:")
+        print(f"    governance_hash: {switched['governance_hash'][:16]}... (new model)")
+        print(f"    previous_hash:   {switched['previous_hash'][:16]}... (old model)")
+
+    # =====================================================================
     # Done
     # =====================================================================
     print("\n=== All scenarios complete ===")
@@ -655,12 +801,14 @@ def main():
     print("  AI Governance (AIGP)   — cryptographic proof, enforcement, audit trail")
     print("  Observability (OTel)   — agent latency, errors, trace topology")
     print("  Lineage (OpenLineage)  — what data flowed where, governed by what")
-    print("\nFive governed resource types:")
+    print("\nSeven governed resource types:")
     print("  policy   — governance rules          (AIGP-defined)")
     print("  prompt   — system prompts             (AIGP-defined)")
     print("  tool     — tool definitions           (AIGP-defined)")
-    print("  context  — pre-execution context      (agent-defined, meaning owned by agent)")
     print("  lineage  — data lineage snapshots     (AIGP-defined, for OpenLineage sync)")
+    print("  context  — pre-execution context      (agent-defined, meaning owned by agent)")
+    print("  memory   — agent memory state         (agent-defined, RAG, conversation history)")
+    print("  model    — model identity             (agent-defined, model card, weights hash)")
 
     provider.shutdown()
 

@@ -81,7 +81,7 @@ class TestGovernanceRunFacet:
         assert facet["hashType"] == "sha256"
         assert facet["agentId"] == "agent.test-bot"
         assert facet["traceId"] == "4bf92f3577b34da6a3ce929d0e0e4736"
-        assert facet["specVersion"] == "0.6.0"
+        assert facet["specVersion"] == "0.7.0"
 
     def test_leaf_count_single_resource(self):
         event = _make_inject_success()
@@ -119,6 +119,16 @@ class TestGovernanceRunFacet:
         facet = build_governance_run_facet(event)
         assert facet["enforcementResult"] == "denied"
 
+    def test_enforcement_denied_blocked(self):
+        event = create_aigp_event(
+            event_type="INFERENCE_BLOCKED",
+            event_category="inference",
+            agent_id="agent.test",
+            trace_id="trace-blocked",
+        )
+        facet = build_governance_run_facet(event)
+        assert facet["enforcementResult"] == "denied"
+
     def test_data_classification_included(self):
         event = _make_inject_success(data_classification="confidential")
         facet = build_governance_run_facet(event)
@@ -135,7 +145,7 @@ class TestGovernanceRunFacet:
         json_str = json.dumps(facet)
         parsed = json.loads(json_str)
         assert parsed["governanceHash"] == "a" * 64
-        assert parsed["specVersion"] == "0.6.0"
+        assert parsed["specVersion"] == "0.7.0"
 
 
 # ===================================================================

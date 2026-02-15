@@ -399,10 +399,12 @@ class TestContextResourceType:
         prompt_hash = compute_leaf_hash("prompt", "prompt.test", content)
         tool_hash = compute_leaf_hash("tool", "tool.test", content)
         lineage_hash = compute_leaf_hash("lineage", "lineage.test", content)
+        memory_hash = compute_leaf_hash("memory", "memory.test", content)
+        model_hash = compute_leaf_hash("model", "model.test", content)
 
-        # All five standard types must produce different hashes
-        all_hashes = {context_hash, policy_hash, prompt_hash, tool_hash, lineage_hash}
-        assert len(all_hashes) == 5
+        # All seven standard types must produce different hashes
+        all_hashes = {context_hash, policy_hash, prompt_hash, tool_hash, lineage_hash, memory_hash, model_hash}
+        assert len(all_hashes) == 7
 
     def test_merkle_tree_with_context_leaf(self):
         """Context resources participate in Merkle tree alongside policies/prompts/tools."""
@@ -444,10 +446,12 @@ class TestLineageResourceType:
         policy_hash = compute_leaf_hash("policy", "policy.test", content)
         prompt_hash = compute_leaf_hash("prompt", "prompt.test", content)
         tool_hash = compute_leaf_hash("tool", "tool.test", content)
+        memory_hash = compute_leaf_hash("memory", "memory.test", content)
+        model_hash = compute_leaf_hash("model", "model.test", content)
 
-        # All five standard types must produce different hashes
-        all_hashes = {lineage_hash, context_hash, policy_hash, prompt_hash, tool_hash}
-        assert len(all_hashes) == 5
+        # All seven standard types must produce different hashes
+        all_hashes = {lineage_hash, context_hash, policy_hash, prompt_hash, tool_hash, memory_hash, model_hash}
+        assert len(all_hashes) == 7
 
     def test_merkle_tree_with_lineage_leaf(self):
         """Lineage resources participate in Merkle tree alongside other types."""
@@ -502,3 +506,115 @@ class TestCustomResourceType:
             compute_leaf_hash("has spaces", "has spaces.test", "content")
         with pytest.raises(ValueError, match="Invalid resource_type"):
             compute_leaf_hash("under_score", "under_score.test", "content")
+
+
+# ===================================================================
+# Memory Resource Type Tests (v0.7.0)
+# ===================================================================
+
+class TestMemoryResourceType:
+    """Tests for the 'memory' resource type in Merkle tree governance."""
+
+    def test_compute_leaf_hash_memory_type(self):
+        """memory is a valid resource_type for leaf hash computation."""
+        result = compute_leaf_hash(
+            resource_type="memory",
+            resource_name="memory.conversation-history",
+            content='[{"role": "user", "content": "Hello"}, {"role": "assistant", "content": "Hi!"}]',
+        )
+        assert len(result) == 64
+        assert re.match(r"^[a-f0-9]{64}$", result)
+
+    def test_memory_domain_separation(self):
+        """A memory leaf and other types with identical content produce different hashes."""
+        content = "identical content for testing domain separation"
+        memory_hash = compute_leaf_hash("memory", "memory.test", content)
+        policy_hash = compute_leaf_hash("policy", "policy.test", content)
+        prompt_hash = compute_leaf_hash("prompt", "prompt.test", content)
+        tool_hash = compute_leaf_hash("tool", "tool.test", content)
+        lineage_hash = compute_leaf_hash("lineage", "lineage.test", content)
+        context_hash = compute_leaf_hash("context", "context.test", content)
+        model_hash = compute_leaf_hash("model", "model.test", content)
+
+        # All seven standard types must produce different hashes
+        all_hashes = {memory_hash, policy_hash, prompt_hash, tool_hash, lineage_hash, context_hash, model_hash}
+        assert len(all_hashes) == 7
+
+    def test_merkle_tree_with_memory_leaf(self):
+        """Memory resources participate in Merkle tree alongside other types."""
+        resources = [
+            ("policy", "policy.trading-limits", "Max position: $10M"),
+            ("prompt", "prompt.support-v3", "You are a helpful assistant"),
+            ("memory", "memory.conversation-history", '{"messages": []}'),
+        ]
+        root_hash, merkle_tree = compute_merkle_governance_hash(resources)
+        assert len(root_hash) == 64
+        assert merkle_tree is not None
+        assert merkle_tree["leaf_count"] == 3
+        leaf_types = {leaf["resource_type"] for leaf in merkle_tree["leaves"]}
+        assert leaf_types == {"policy", "prompt", "memory"}
+
+
+# ===================================================================
+# Model Resource Type Tests (v0.7.0)
+# ===================================================================
+
+class TestModelResourceType:
+    """Tests for the 'model' resource type in Merkle tree governance."""
+
+    def test_compute_leaf_hash_model_type(self):
+        """model is a valid resource_type for leaf hash computation."""
+        result = compute_leaf_hash(
+            resource_type="model",
+            resource_name="model.gpt4-trading-v2",
+            content='{"model": "gpt-4", "version": "2024-01", "weights_hash": "abc123"}',
+        )
+        assert len(result) == 64
+        assert re.match(r"^[a-f0-9]{64}$", result)
+
+    def test_model_domain_separation(self):
+        """A model leaf and other types with identical content produce different hashes."""
+        content = "identical content for testing domain separation"
+        model_hash = compute_leaf_hash("model", "model.test", content)
+        policy_hash = compute_leaf_hash("policy", "policy.test", content)
+        prompt_hash = compute_leaf_hash("prompt", "prompt.test", content)
+        tool_hash = compute_leaf_hash("tool", "tool.test", content)
+        lineage_hash = compute_leaf_hash("lineage", "lineage.test", content)
+        context_hash = compute_leaf_hash("context", "context.test", content)
+        memory_hash = compute_leaf_hash("memory", "memory.test", content)
+
+        # All seven standard types must produce different hashes
+        all_hashes = {model_hash, policy_hash, prompt_hash, tool_hash, lineage_hash, context_hash, memory_hash}
+        assert len(all_hashes) == 7
+
+    def test_merkle_tree_with_model_leaf(self):
+        """Model resources participate in Merkle tree alongside other types."""
+        resources = [
+            ("policy", "policy.trading-limits", "Max position: $10M"),
+            ("model", "model.gpt4-trading-v2", '{"model": "gpt-4"}'),
+            ("memory", "memory.session-state", '{"turn": 5}'),
+        ]
+        root_hash, merkle_tree = compute_merkle_governance_hash(resources)
+        assert len(root_hash) == 64
+        assert merkle_tree is not None
+        assert merkle_tree["leaf_count"] == 3
+        leaf_types = {leaf["resource_type"] for leaf in merkle_tree["leaves"]}
+        assert leaf_types == {"policy", "model", "memory"}
+
+    def test_merkle_tree_all_seven_standard_types(self):
+        """All seven standard resource types work together in a single Merkle tree."""
+        resources = [
+            ("policy", "policy.limits", "Max $10M"),
+            ("prompt", "prompt.assist", "You are helpful"),
+            ("tool", "tool.search", '{"scope": "read"}'),
+            ("lineage", "lineage.upstream", '{"datasets": ["orders"]}'),
+            ("context", "context.env", '{"env": "prod"}'),
+            ("memory", "memory.history", '{"messages": []}'),
+            ("model", "model.gpt4", '{"model": "gpt-4"}'),
+        ]
+        root_hash, merkle_tree = compute_merkle_governance_hash(resources)
+        assert len(root_hash) == 64
+        assert merkle_tree is not None
+        assert merkle_tree["leaf_count"] == 7
+        leaf_types = {leaf["resource_type"] for leaf in merkle_tree["leaves"]}
+        assert leaf_types == {"policy", "prompt", "tool", "lineage", "context", "memory", "model"}

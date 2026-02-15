@@ -1,0 +1,47 @@
+{
+  "event_id": "f3a4b5c6-d7e8-9012-abcd-ef0123456789",
+  "event_type": "TOOL_INVOKED",
+  "event_category": "tool",
+  "event_time": "2026-02-15T14:30:02.345Z",
+
+  "agent_id": "agent.trading-bot-v2",
+  "agent_name": "Trading Bot",
+  "org_id": "org.finco",
+  "org_name": "FinCo",
+
+  "policy_id": "",
+  "policy_name": "",
+  "policy_version": 0,
+
+  "prompt_id": "",
+  "prompt_name": "",
+  "prompt_version": 0,
+
+  "governance_hash": "e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0",
+  "hash_type": "sha256",
+  "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+  "span_id": "22f067cc2ba902d9",
+  "parent_span_id": "00f067aa0ba902b7",
+  "trace_flags": "01",
+  "data_classification": "internal",
+
+  "template_rendered": false,
+
+  "denial_reason": "",
+  "violation_type": "",
+  "severity": "",
+
+  "source_ip": "",
+  "request_method": "",
+  "request_path": "",
+
+  "query_hash": "",
+  "previous_hash": "",
+
+  "annotations": {
+    "tool_name": "tool.order-lookup",
+    "tool_version": 2,
+    "input_summary": "order_id=ORD-12345"
+  },
+  "spec_version": "0.7.0"
+}

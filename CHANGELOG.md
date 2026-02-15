@@ -5,6 +5,40 @@ All notable changes to the AIGP specification will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-02-15
+
+### Added
+- **Memory resource type** — 7th standard governed resource type for agent dynamic state (conversation history, RAG retrieval, session state, vector store queries/writes). AGRN prefix `memory.`. Agent-defined content structure.
+- **Model resource type** — 8th standard governed resource type for inference engine identity (model card, weights hash, LoRA config, quantization settings). AGRN prefix `model.`. Agent-defined content structure.
+- `query_hash` field — SHA-256 hash of a retrieval query, used in `MEMORY_READ` events to prove what the agent asked for
+- `previous_hash` field — SHA-256 hash of resource state before a write operation, used in `MEMORY_WRITTEN` and `MODEL_SWITCHED` events for diff tracking
+- **14 new event types** (total 30 across 14 categories):
+  - `MEMORY_READ`, `MEMORY_WRITTEN` — memory governance events
+  - `TOOL_INVOKED`, `TOOL_DENIED` — tool governance events
+  - `CONTEXT_CAPTURED` — context snapshot event
+  - `LINEAGE_SNAPSHOT` — lineage snapshot event
+  - `INFERENCE_STARTED`, `INFERENCE_COMPLETED`, `INFERENCE_BLOCKED` — inference lifecycle events
+  - `HUMAN_OVERRIDE`, `HUMAN_APPROVAL` — human-in-the-loop events
+  - `CLASSIFICATION_CHANGED` — data classification change event
+  - `MODEL_LOADED`, `MODEL_SWITCHED` — model governance events
+- OTel semantic attributes: `aigp.memories.names`, `aigp.models.names` — array-valued attributes for memory and model resources
+- 14 new OTel span event names (e.g., `aigp.memory.read`, `aigp.model.loaded`)
+- Python SDK: 14 new `AIGPInstrumentor` convenience methods (one per new event type)
+- Example events: `memory-read.json`, `memory-written.json`, `tool-invoked.json`, `inference-completed.json`, `model-loaded.json`
+- End-to-end example Scenarios 10-13: Memory Governance, Tool Governance, Inference Lifecycle, Model Governance
+- Comprehensive test suite for all new events (test_new_events.py)
+
+### Changed
+- Standard resource types expanded from 5 to 7 (added memory, model)
+- Resource type ordering: policy, prompt, tool, lineage, context, memory, model
+- Event type count: 16 → 30 across 14 categories (was 8)
+- Merkle tree example expanded from 7 to 9 leaves (added memory and model)
+- Domain separation tests cover all 7 standard types
+- BLOCKED event type handling added to enforcement result derivation (joins DENIED and VIOLATION)
+- All OpenLineage facet schema URLs updated to v0.7.0
+- Spec version bumped to 0.7.0
+- Backward compatible: existing events and hashes unchanged
+
 ## [0.6.0] - 2026-02-15
 
 ### Added
