@@ -28,16 +28,23 @@ Usage:
 """
 
 from aigp_otel.instrumentor import AIGPInstrumentor
-from aigp_otel.events import create_aigp_event, compute_governance_hash
+from aigp_otel.events import (
+    create_aigp_event,
+    compute_governance_hash,
+    compute_leaf_hash,
+    compute_merkle_governance_hash,
+)
 from aigp_otel.attributes import AIGPAttributes
 from aigp_otel.baggage import AIGPBaggage
 from aigp_otel.tracestate import AIGPTraceState
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 __all__ = [
     "AIGPInstrumentor",
     "create_aigp_event",
     "compute_governance_hash",
+    "compute_leaf_hash",
+    "compute_merkle_governance_hash",
     "AIGPAttributes",
     "AIGPBaggage",
     "AIGPTraceState",

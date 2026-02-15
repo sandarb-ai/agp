@@ -33,7 +33,11 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.trace import StatusCode, Span
 
 from aigp_otel.attributes import AIGPAttributes
-from aigp_otel.events import create_aigp_event, compute_governance_hash
+from aigp_otel.events import (
+    create_aigp_event,
+    compute_governance_hash,
+    compute_merkle_governance_hash,
+)
 from aigp_otel.baggage import AIGPBaggage
 from aigp_otel.tracestate import AIGPTraceState
 
@@ -80,7 +84,7 @@ class AIGPInstrumentor:
         self.tracer_name = tracer_name
         self.event_callback = event_callback
 
-        self._tracer = trace.get_tracer(tracer_name, "0.3.0")
+        self._tracer = trace.get_tracer(tracer_name, "0.4.0")
 
     def get_resource_attributes(self) -> dict[str, str]:
         """
@@ -175,6 +179,10 @@ class AIGPInstrumentor:
             attrs[AIGPAttributes.VIOLATION_TYPE] = aigp_event["violation_type"]
         if aigp_event.get("denial_reason"):
             attrs[AIGPAttributes.DENIAL_REASON] = aigp_event["denial_reason"]
+
+        # Merkle tree governance (Section 8.8)
+        if aigp_event.get("governance_merkle_tree"):
+            attrs[AIGPAttributes.MERKLE_LEAF_COUNT] = aigp_event["governance_merkle_tree"]["leaf_count"]
 
         span.add_event(event_name, attributes=attrs)
 
@@ -498,6 +506,7 @@ class AIGPInstrumentor:
         template_rendered: bool = False,
         metadata: Optional[dict[str, Any]] = None,
         span: Optional[Span] = None,
+        resource_contents: Optional[list[tuple[str, str, str]]] = None,
     ) -> dict[str, Any]:
         """
         Emit an INJECT_SUCCESS for an operation governed by multiple policies.
@@ -505,11 +514,20 @@ class AIGPInstrumentor:
         Uses array-valued OTel attributes (aigp.policies.names, aigp.policies.versions)
         per Section 3.5 of the semantic conventions.
 
+        When `resource_contents` is provided with multiple resources, computes a
+        Merkle tree governance hash (Section 8.8) where each resource gets its own
+        leaf hash and the root becomes the governance_hash. The OTel span event
+        carries `aigp.governance.merkle.leaf_count` for observability.
+
         Args:
             policies: List of dicts, each with "name" and "version" keys.
                       e.g., [{"name": "policy.trading-limits", "version": 4},
                              {"name": "policy.risk-controls", "version": 2}]
-            content: The governed content.
+            content: The governed content (used for flat hash when
+                     resource_contents is not provided).
+            resource_contents: Optional list of (resource_type, resource_name,
+                     content) tuples for Merkle tree hash computation. When
+                     provided with >1 resource, produces merkle-sha256 hash.
             ...
 
         Returns:
@@ -520,7 +538,15 @@ class AIGPInstrumentor:
             raise ValueError("At least one policy is required")
 
         span_ctx = self._get_span_context(span)
-        governance_hash = compute_governance_hash(content)
+
+        # Merkle tree when per-resource content is provided
+        if resource_contents and len(resource_contents) > 1:
+            governance_hash, merkle_tree = compute_merkle_governance_hash(resource_contents)
+            hash_type = "merkle-sha256"
+        else:
+            governance_hash = compute_governance_hash(content)
+            merkle_tree = None
+            hash_type = "sha256"
 
         # Primary policy goes into standard AIGP fields
         primary = policies[0]
@@ -531,6 +557,7 @@ class AIGPInstrumentor:
             agent_id=self.agent_id,
             trace_id=span_ctx["trace_id"],
             governance_hash=governance_hash,
+            hash_type=hash_type,
             span_id=span_ctx["span_id"],
             parent_span_id=span_ctx["parent_span_id"],
             trace_flags=span_ctx["trace_flags"],
@@ -548,6 +575,7 @@ class AIGPInstrumentor:
                     for p in policies
                 ],
             },
+            governance_merkle_tree=merkle_tree,
         )
 
         # Emit OTel span event with array attributes
@@ -559,6 +587,7 @@ class AIGPInstrumentor:
             AIGPAttributes.EVENT_TYPE: aigp_event["event_type"],
             AIGPAttributes.EVENT_CATEGORY: aigp_event["event_category"],
             AIGPAttributes.GOVERNANCE_HASH: governance_hash,
+            AIGPAttributes.GOVERNANCE_HASH_TYPE: hash_type,
             AIGPAttributes.ENFORCEMENT_RESULT: AIGPAttributes.ENFORCEMENT_ALLOWED,
             # Array-valued attributes for multiple policies
             AIGPAttributes.POLICIES_NAMES: [p["name"] for p in policies],
@@ -566,6 +595,8 @@ class AIGPInstrumentor:
         }
         if data_classification:
             attrs[AIGPAttributes.DATA_CLASSIFICATION] = data_classification
+        if merkle_tree:
+            attrs[AIGPAttributes.MERKLE_LEAF_COUNT] = merkle_tree["leaf_count"]
 
         span.add_event(AIGPAttributes.EVENT_INJECT_SUCCESS, attributes=attrs)
 
@@ -577,3 +608,68 @@ class AIGPInstrumentor:
                 logger.error(f"AIGP event callback failed: {e}")
 
         return aigp_event
+
+    def multi_resource_governance_proof(
+        self,
+        resources: list[tuple[str, str, str]],
+        data_classification: str = "",
+        metadata: Optional[dict[str, Any]] = None,
+        span: Optional[Span] = None,
+    ) -> dict[str, Any]:
+        """
+        Emit a GOVERNANCE_PROOF for multiple governed resources using Merkle tree.
+
+        Each resource gets its own leaf hash (domain-separated), and the Merkle
+        root becomes the governance_hash. The OTel span event carries
+        aigp.governance.merkle.leaf_count for observability dashboards.
+
+        Args:
+            resources: List of (resource_type, resource_name, content) tuples.
+                resource_type: "policy", "prompt", or "tool"
+                resource_name: AGRN name (e.g., "policy.trading-limits")
+                content: The governed content string
+            data_classification: Data sensitivity level.
+            metadata: Additional metadata.
+            span: Optional OTel span.
+
+        Returns:
+            AIGP event dict with governance_merkle_tree.
+        """
+        if not resources:
+            raise ValueError("At least one resource is required")
+
+        span_ctx = self._get_span_context(span)
+        governance_hash, merkle_tree = compute_merkle_governance_hash(resources)
+        hash_type = "merkle-sha256" if merkle_tree else "sha256"
+
+        # Extract primary resource for singular fields
+        primary_type, primary_name, _ = resources[0]
+        policy_name = primary_name if primary_type == "policy" else ""
+        prompt_name = primary_name if primary_type == "prompt" else ""
+
+        aigp_event = create_aigp_event(
+            event_type="GOVERNANCE_PROOF",
+            event_category="governance-proof",
+            agent_id=self.agent_id,
+            trace_id=span_ctx["trace_id"],
+            governance_hash=governance_hash,
+            hash_type=hash_type,
+            span_id=span_ctx["span_id"],
+            parent_span_id=span_ctx["parent_span_id"],
+            trace_flags=span_ctx["trace_flags"],
+            agent_name=self.agent_name,
+            org_id=self.org_id,
+            org_name=self.org_name,
+            policy_name=policy_name,
+            prompt_name=prompt_name,
+            data_classification=data_classification,
+            metadata={
+                **(metadata or {}),
+                "all_resources": [
+                    {"type": r[0], "name": r[1]} for r in resources
+                ],
+            },
+            governance_merkle_tree=merkle_tree,
+        )
+
+        return self._dual_emit(AIGPAttributes.EVENT_GOVERNANCE_PROOF, aigp_event, span)

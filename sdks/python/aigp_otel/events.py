@@ -39,6 +39,136 @@ def compute_governance_hash(
         raise ValueError(f"Unsupported hash algorithm: {algorithm}")
 
 
+def compute_leaf_hash(
+    resource_type: str,
+    resource_name: str,
+    content: str,
+) -> str:
+    """
+    Compute a Merkle leaf hash for a single governed resource.
+
+    Leaf = SHA-256(resource_type + ":" + resource_name + ":" + content)
+
+    The domain separator (resource_type:resource_name:) prevents
+    cross-resource collisions: a policy and a prompt with identical
+    content produce different leaf hashes.
+
+    Args:
+        resource_type: One of "policy", "prompt", "tool".
+        resource_name: AGRN-format name (e.g., "policy.trading-limits").
+        content: The governed content string.
+
+    Returns:
+        Lowercase hexadecimal hash string (64 chars, SHA-256).
+    """
+    if resource_type not in ("policy", "prompt", "tool"):
+        raise ValueError(
+            f"Invalid resource_type: {resource_type}. "
+            "Must be 'policy', 'prompt', or 'tool'."
+        )
+    prefixed = f"{resource_type}:{resource_name}:{content}"
+    return hashlib.sha256(prefixed.encode("utf-8")).hexdigest()
+
+
+def _compute_merkle_root(sorted_hashes: list[str]) -> str:
+    """
+    Compute Merkle root from a list of sorted leaf hashes.
+
+    Algorithm (AIGP Spec Section 8.8.3):
+    - Pair hashes left-to-right: parent = SHA-256(left + right)
+    - If odd number, last hash is promoted (not duplicated)
+    - Repeat until one root remains.
+
+    The promotion rule (vs. Bitcoin-style duplication) avoids the
+    second-preimage vulnerability where a tree with N leaves could
+    have the same root as a tree with N+1 identical-last leaves.
+
+    Args:
+        sorted_hashes: Leaf hashes in lexicographic ascending order.
+
+    Returns:
+        The Merkle root hash (64-char lowercase hex).
+    """
+    if len(sorted_hashes) == 0:
+        raise ValueError("Cannot compute Merkle root of empty list")
+    if len(sorted_hashes) == 1:
+        return sorted_hashes[0]
+
+    level = list(sorted_hashes)
+    while len(level) > 1:
+        next_level: list[str] = []
+        i = 0
+        while i < len(level) - 1:
+            combined = level[i] + level[i + 1]
+            parent = hashlib.sha256(combined.encode("utf-8")).hexdigest()
+            next_level.append(parent)
+            i += 2
+        if i == len(level) - 1:
+            # Odd node: promote without duplication
+            next_level.append(level[i])
+        level = next_level
+    return level[0]
+
+
+def compute_merkle_governance_hash(
+    resources: list[tuple[str, str, str]],
+) -> tuple[str, dict | None]:
+    """
+    Compute Merkle tree governance hash for multiple governed resources.
+
+    If only one resource is provided, returns a flat SHA-256 hash
+    (backward compatible with v0.3.0 — no Merkle tree structure).
+
+    If multiple resources are provided, computes a Merkle tree where
+    each resource gets its own leaf hash, and the root becomes the
+    governance_hash.
+
+    Args:
+        resources: List of (resource_type, resource_name, content) tuples.
+            resource_type: "policy", "prompt", or "tool"
+            resource_name: AGRN name (e.g., "policy.trading-limits")
+            content: The governed content string
+
+    Returns:
+        Tuple of (root_hash, merkle_tree_dict):
+        - root_hash: The governance_hash value (64-char hex).
+        - merkle_tree_dict: The governance_merkle_tree object, or None
+          if only one resource (single resource uses flat hash).
+    """
+    if not resources:
+        raise ValueError("At least one resource is required")
+
+    if len(resources) == 1:
+        # Single resource: flat hash over content only (backward compatible)
+        _rtype, _rname, content = resources[0]
+        flat_hash = compute_governance_hash(content)
+        return flat_hash, None
+
+    # Multiple resources: compute Merkle tree
+    leaves = []
+    for resource_type, resource_name, content in resources:
+        leaf_hash = compute_leaf_hash(resource_type, resource_name, content)
+        leaves.append({
+            "resource_type": resource_type,
+            "resource_name": resource_name,
+            "hash": leaf_hash,
+        })
+
+    # Sort leaves by hash (lexicographic ascending) for deterministic tree
+    leaves.sort(key=lambda leaf: leaf["hash"])
+    sorted_hashes = [leaf["hash"] for leaf in leaves]
+
+    root = _compute_merkle_root(sorted_hashes)
+
+    merkle_tree = {
+        "algorithm": "sha256",
+        "leaf_count": len(leaves),
+        "leaves": leaves,
+    }
+
+    return root, merkle_tree
+
+
 def create_aigp_event(
     event_type: str,
     event_category: str,
@@ -75,6 +205,8 @@ def create_aigp_event(
     request_path: str = "",
     # Extension
     metadata: Optional[dict[str, Any]] = None,
+    # Merkle tree (Section 8.8)
+    governance_merkle_tree: Optional[dict[str, Any]] = None,
 ) -> dict[str, Any]:
     """
     Create an AIGP event conforming to the v0.3.0 schema.
@@ -140,5 +272,9 @@ def create_aigp_event(
         # Extension (Section 5.7)
         "metadata": metadata or {},
     }
+
+    # Merkle tree (Section 8.8) — only present when used
+    if governance_merkle_tree is not None:
+        event["governance_merkle_tree"] = governance_merkle_tree
 
     return event

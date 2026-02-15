@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://aigp.sandarb.ai/schema/aigp-event.schema.json",
   "title": "AIGP Event",
-  "description": "AI Governance Proof (AIGP) event schema v0.3.0 — an open specification for capturing cryptographic proof of every AI agent governance action. Includes OpenTelemetry integration fields for native distributed tracing correlation.",
+  "description": "AI Governance Proof (AIGP) event schema v0.4.0 — an open specification for capturing cryptographic proof of every AI agent governance action. Includes OpenTelemetry integration fields for native distributed tracing correlation and Merkle tree governance hash for multi-resource verification.",
   "type": "object",
   "required": [
     "event_id",
@@ -119,14 +119,14 @@
 
     "governance_hash": {
       "type": "string",
-      "description": "SHA-256 hash of the governed content at the time of the action. This is the cryptographic proof. Must be lowercase hexadecimal (64 characters) when present, or empty string for events without governed content.",
+      "description": "SHA-256 hash of the governed content at the time of the action. This is the cryptographic proof. For single-resource events, this is a flat SHA-256 hash. For multi-resource events with Merkle tree (hash_type='merkle-sha256'), this is the Merkle root. Must be lowercase hexadecimal (64 characters) when present, or empty string for events without governed content.",
       "pattern": "^([a-f0-9]{64})?$"
     },
     "hash_type": {
       "type": "string",
-      "description": "Hash algorithm used.",
+      "description": "Hash algorithm used. 'sha256' for flat hash over single content, 'merkle-sha256' for Merkle tree root over multiple governed resources.",
       "default": "sha256",
-      "examples": ["sha256", "sha384", "sha512"]
+      "examples": ["sha256", "sha384", "sha512", "merkle-sha256"]
     },
     "trace_id": {
       "type": "string",
@@ -216,6 +216,53 @@
       "description": "Extensible object for domain-specific data. Implementations may add regulatory hooks, custom tags, or framework-specific metadata.",
       "default": {},
       "additionalProperties": true
+    },
+
+    "governance_merkle_tree": {
+      "type": "object",
+      "description": "Optional Merkle tree structure for multi-resource governance hash verification. Present when hash_type is 'merkle-sha256'. Each leaf represents one governed resource, enabling per-resource verification without possessing all resources. See Spec Section 8.8.",
+      "properties": {
+        "algorithm": {
+          "type": "string",
+          "description": "Hash algorithm used for leaf and internal node computation.",
+          "default": "sha256",
+          "examples": ["sha256"]
+        },
+        "leaf_count": {
+          "type": "integer",
+          "minimum": 2,
+          "description": "Number of leaves in the Merkle tree. Must equal the length of the leaves array. Minimum 2 (single-resource events do not use Merkle trees)."
+        },
+        "leaves": {
+          "type": "array",
+          "description": "Leaf nodes sorted by hash value (lexicographic ascending). Each leaf represents one governed resource.",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "required": ["resource_type", "resource_name", "hash"],
+            "properties": {
+              "resource_type": {
+                "type": "string",
+                "enum": ["policy", "prompt", "tool"],
+                "description": "Type of governed resource."
+              },
+              "resource_name": {
+                "type": "string",
+                "description": "AGRN-format name of the governed resource.",
+                "examples": ["policy.trading-limits", "prompt.customer-support-v3", "tool.order-lookup"]
+              },
+              "hash": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$",
+                "description": "SHA-256 leaf hash: SHA-256(resource_type + ':' + resource_name + ':' + content)."
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["algorithm", "leaf_count", "leaves"],
+      "additionalProperties": false
     }
   },
   "patternProperties": {

@@ -65,6 +65,10 @@ processors:
             where attributes["aigp.enforcement.result"] == "denied"
               and attributes["aigp.denial.reason"] != nil
 
+          # Tag Merkle tree governance spans for compliance filtering
+          - set(attributes["aigp.governance.merkle"], "true")
+            where attributes["aigp.governance.hash_type"] == "merkle-sha256"
+
   # -------------------------------------------------------
   # 4. Filter: route only AIGP-relevant spans to compliance
   # -------------------------------------------------------

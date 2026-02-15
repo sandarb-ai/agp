@@ -82,6 +82,7 @@ instrumentor.inject_success(...)
 | `a2a_call()` | `A2A_CALL` | `aigp.a2a.call` |
 | `governance_proof()` | `GOVERNANCE_PROOF` | `aigp.governance.proof` |
 | `multi_policy_inject()` | `INJECT_SUCCESS` | `aigp.inject.success` (with array attributes) |
+| `multi_resource_governance_proof()` | `GOVERNANCE_PROOF` | `aigp.governance.proof` (with Merkle tree) |
 
 ### Multi-Policy / Multi-Prompt Support
 
@@ -103,6 +104,43 @@ This produces OTel array-valued attributes:
 aigp.policies.names = ["policy.trading-limits", "policy.risk-controls"]
 aigp.policies.versions = [4, 2]
 ```
+
+### Merkle Tree Governance Hash
+
+When an agent is governed by multiple resources (policies, prompts, tools), compute a Merkle tree for per-resource verification:
+
+```python
+from aigp_otel.events import compute_merkle_governance_hash
+
+resources = [
+    ("policy", "policy.refund-limits", "Refund max: $500..."),
+    ("prompt", "prompt.customer-support-v3", "You are a helpful..."),
+    ("tool", "tool.order-lookup", '{"name": "order-lookup", "scope": "read"}'),
+]
+
+root_hash, merkle_tree = compute_merkle_governance_hash(resources)
+# root_hash: "a3f2b8..." (Merkle root, used as governance_hash)
+# merkle_tree: {"algorithm": "sha256", "leaf_count": 3, "leaves": [...]}
+```
+
+Or use the instrumentor for dual-emit with Merkle:
+
+```python
+event = instrumentor.multi_resource_governance_proof(
+    resources=[
+        ("policy", "policy.refund-limits", "Refund max: $500..."),
+        ("prompt", "prompt.customer-support-v3", "You are a helpful..."),
+        ("tool", "tool.order-lookup", '{"name": "order-lookup"}'),
+    ],
+    data_classification="confidential",
+)
+# governance_hash is the Merkle root
+# hash_type is "merkle-sha256"
+# governance_merkle_tree contains per-resource leaf hashes
+# OTel span event carries aigp.governance.merkle.leaf_count
+```
+
+Single-resource calls continue to produce flat SHA-256 hashes for full backward compatibility.
 
 ### Baggage Propagation (Agent-to-Agent)
 
@@ -146,7 +184,7 @@ context = AIGPTraceState.extract_from_tracestate(tracestate)
 |--------|---------|
 | `aigp_otel.instrumentor` | Core dual-emit bridge (`AIGPInstrumentor`) |
 | `aigp_otel.attributes` | `aigp.*` semantic attribute constants |
-| `aigp_otel.events` | AIGP event creation and hash computation |
+| `aigp_otel.events` | AIGP event creation, hash computation, and Merkle tree |
 | `aigp_otel.baggage` | OTel Baggage propagation for A2A calls |
 | `aigp_otel.tracestate` | W3C tracestate vendor key encode/decode |
 

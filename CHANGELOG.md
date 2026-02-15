@@ -5,6 +5,29 @@ All notable changes to the AIGP specification will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-02-15
+
+### Added
+- **Merkle tree governance hash** for multi-resource operations (Spec Section 8.8)
+- `governance_merkle_tree` optional field — per-resource leaf hashes enabling independent verification of policies, prompts, and tools
+- `hash_type` value `"merkle-sha256"` — indicates Merkle tree root as `governance_hash`
+- Spec Section 8.8: Merkle Tree Hash Computation (leaf construction with domain separators, tree algorithm with odd-promotion, verification, backward compatibility)
+- Python SDK: `compute_leaf_hash()` — domain-separated SHA-256 for individual governed resources
+- Python SDK: `compute_merkle_governance_hash()` — computes Merkle root + tree structure from resource list
+- Python SDK: `multi_resource_governance_proof()` instrumentor method with OTel dual-emit
+- OTel semantic attribute: `aigp.governance.merkle.leaf_count` — span attribute for Merkle tree observability
+- OTel semantic conventions Section 3.6: Merkle Tree Governance Attributes
+- OTel Collector OTTL rule to tag Merkle-tree governance spans
+- Example event: `merkle-governance-proof.json` (5-leaf tree with real computed hashes)
+- Merkle tree test suite (`tests/test_merkle.py`, ~20 test cases)
+- End-to-end example Scenario 7: Merkle tree governance proof
+
+### Changed
+- `multi_policy_inject()` now accepts optional `resource_contents` parameter for Merkle tree construction
+- `create_aigp_event()` accepts optional `governance_merkle_tree` parameter
+- Schema updated with `governance_merkle_tree` object definition (optional, backward compatible)
+- Backward compatible: single-resource events produce identical hashes to v0.3.0
+
 ## [0.3.0] - 2026-02-15
 
 ### Added

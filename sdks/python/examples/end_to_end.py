@@ -10,6 +10,7 @@ Demonstrates the full dual-emit architecture:
 5. Policy violation detection
 6. Agent-to-agent call with Baggage propagation
 7. tracestate vendor key for lightweight governance signaling
+8. Merkle tree governance proof for multi-resource verification
 
 Run:
     pip install opentelemetry-api opentelemetry-sdk
@@ -66,7 +67,7 @@ def main():
     provider.add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter()))
     trace.set_tracer_provider(provider)
 
-    tracer = trace.get_tracer("aigp.example", "0.3.0")
+    tracer = trace.get_tracer("aigp.example", "0.4.0")
 
     # ===========================================================
     # Step 2: Single policy injection with OTel correlation
@@ -198,6 +199,37 @@ def main():
     # Reconstruct W3C traceparent from AIGP event
     print(f"\n  Reconstructed traceparent:")
     print(f"    00-{event['trace_id']}-{event['span_id']}-{event['trace_flags']}")
+
+    # ===========================================================
+    # Step 8: Merkle tree governance proof (multi-resource)
+    # ===========================================================
+    print("\n=== Scenario 7: Merkle Tree Governance Proof ===")
+
+    with tracer.start_as_current_span("invoke_agent.customer_support") as span:
+        span.set_attribute("gen_ai.operation.name", "invoke_agent")
+
+        # Agent governed by 3 resources: 1 policy + 1 prompt + 1 tool
+        # Each gets its own leaf hash; Merkle root becomes governance_hash
+        event = instrumentor.multi_resource_governance_proof(
+            resources=[
+                ("policy", "policy.trading-limits",
+                 "Maximum single position: $10M. Daily loss limit: $500K."),
+                ("prompt", "prompt.trading-assistant-v3",
+                 "You are a helpful trading assistant. Follow all risk controls."),
+                ("tool", "tool.position-calculator",
+                 '{"name": "position-calculator", "scope": "read"}'),
+            ],
+            data_classification="confidential",
+            metadata={"regulatory_hooks": ["FINRA", "SEC"]},
+        )
+
+        print(f"\n  hash_type:       {event['hash_type']}")
+        print(f"  governance_hash: {event['governance_hash'][:16]}... (Merkle root)")
+        if "governance_merkle_tree" in event:
+            tree = event["governance_merkle_tree"]
+            print(f"  leaf_count:      {tree['leaf_count']}")
+            for leaf in tree["leaves"]:
+                print(f"    {leaf['resource_type']:8s} {leaf['resource_name']:40s} {leaf['hash'][:16]}...")
 
     # ===========================================================
     # Done

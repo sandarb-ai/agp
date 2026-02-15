@@ -1,7 +1,7 @@
 # AI Governance Proof (AIGP)&trade;
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
-[![Spec](https://img.shields.io/badge/Spec-v0.3.0-violet.svg)](./spec/aigp-spec.md)
+[![Spec](https://img.shields.io/badge/Spec-v0.4.0-violet.svg)](./spec/aigp-spec.md)
 [![Schema](https://img.shields.io/badge/JSON_Schema-valid-green.svg)](./schema/aigp-event.schema.json)
 [![OTel](https://img.shields.io/badge/OpenTelemetry-compatible-orange.svg)](./integrations/opentelemetry/semantic-conventions.md)
 
@@ -161,6 +161,8 @@ governance_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
 
 If the same content is delivered to two agents, they produce the same hash — proving identical delivery. Any modification is detectable.
 
+For operations involving multiple governed resources (policies, prompts, tools), AIGP supports **Merkle tree hash construction**. Each resource gets its own leaf hash, and the Merkle root becomes the `governance_hash`. This enables per-resource verification without possessing all resources. Set `hash_type` to `"merkle-sha256"` and include the optional `governance_merkle_tree` field. Single-resource events remain unchanged. See [Spec Section 8.8](./spec/aigp-spec.md#88-merkle-tree-hash-computation).
+
 ---
 
 ## Example Event
@@ -254,7 +256,7 @@ We don't have all the answers. AI governance is a new field, and the right forma
 
 - **Use it and tell us what's missing.** If the schema doesn't capture something your regulators need, that's exactly the feedback we want.
 - **Propose new event types.** The 16 standard types cover what we've seen so far. Healthcare, autonomous vehicles, and other domains will have governance actions we haven't imagined.
-- **Challenge the design.** If events should be signed, or `governance_hash` should use a Merkle tree, or the schema should be nested — [open an issue](https://github.com/sandarb-ai/aigp/issues).
+- **Challenge the design.** If events should be signed, or the schema should be nested, or you need features beyond what's here — [open an issue](https://github.com/sandarb-ai/aigp/issues).
 - **Build your own implementation.** AIGP is Apache 2.0. Build a Go producer, a Rust consumer, a Spark connector. The more implementations, the more useful the format.
 
 ### Resources

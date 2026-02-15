@@ -62,8 +62,9 @@ Span attributes capture per-operation governance metadata. They are set on the s
 | `aigp.event.id` | String | Yes | UUID of the AIGP event | `a1b2c3d4-e5f6-7890-abcd-ef1234567890` |
 | `aigp.event.type` | String | Yes | AIGP event type | `INJECT_SUCCESS` |
 | `aigp.event.category` | String | Yes | AIGP event category | `inject` |
-| `aigp.governance.hash` | String | Conditional | SHA-256 hash of governed content | `a3f2b8c1d4e5...` |
-| `aigp.governance.hash_type` | String | No | Hash algorithm | `sha256` |
+| `aigp.governance.hash` | String | Conditional | SHA-256 hash of governed content (flat or Merkle root) | `a3f2b8c1d4e5...` |
+| `aigp.governance.hash_type` | String | No | Hash algorithm (`sha256` or `merkle-sha256`) | `sha256` |
+| `aigp.governance.merkle.leaf_count` | Int | Conditional | Number of leaves in Merkle tree (when `hash_type` is `merkle-sha256`) | `5` |
 | `aigp.data.classification` | String | Recommended | Data sensitivity level | `confidential` |
 | `aigp.enforcement.result` | String | Recommended | Governance decision | `allowed` or `denied` |
 
@@ -104,6 +105,16 @@ When a single governance operation involves multiple policies, prompts, or tools
 | `aigp.tools.names` | String[] | Governed tools invoked | `["tool.web-search", "tool.database-query"]` |
 
 When only a single policy or prompt is involved, implementations MAY use the singular form (`aigp.policy.name`) instead of the array form.
+
+### 3.6 Merkle Tree Governance Attributes
+
+When `hash_type` is `"merkle-sha256"`, the governance hash is a Merkle root computed over individual resource leaf hashes. The following attribute provides observability into the Merkle structure:
+
+| Attribute | Type | Required | Description | Example |
+|---|---|---|---|---|
+| `aigp.governance.merkle.leaf_count` | Int | Conditional | Number of governed resources in the Merkle tree. Present when `aigp.governance.hash_type` is `"merkle-sha256"`. | `5` |
+
+The full Merkle tree structure (leaf hashes, resource names, resource types) is carried in the AIGP event's `governance_merkle_tree` field rather than as OTel span attributes, to avoid excessive attribute cardinality in observability backends. The `leaf_count` attribute provides sufficient signal for dashboards and alerts (e.g., "alert when leaf_count > 10" or "histogram of resources per governance action").
 
 ---
 

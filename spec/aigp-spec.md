@@ -1,6 +1,6 @@
 # AI Governance Proof (AIGP) Specification
 
-**Version:** 0.3.0 (Draft)
+**Version:** 0.4.0 (Draft)
 
 **Status:** Draft
 
@@ -244,7 +244,8 @@ The following fields relate to the cryptographic proof and traceability of the g
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `governance_hash` | String | *(required)* | See Section 5.1 and Section 8. |
-| `hash_type` | String | `"sha256"` | The hash algorithm used to compute `governance_hash`. MUST be a recognized algorithm identifier. Default is `"sha256"`. Implementations MAY support `"sha384"` or `"sha512"` for future algorithm migration. |
+| `hash_type` | String | `"sha256"` | The hash algorithm used to compute `governance_hash`. MUST be a recognized algorithm identifier. Default is `"sha256"`. Implementations MAY support `"sha384"`, `"sha512"`, or `"merkle-sha256"` (Merkle tree root). See Section 8.8. |
+| `governance_merkle_tree` | Object | *(none)* | When `hash_type` is `"merkle-sha256"`, this OPTIONAL field contains the Merkle tree structure enabling per-resource verification of governed content. See Section 8.8. |
 | `trace_id` | String | *(required)* | See Section 5.1 and Section 11. |
 | `span_id` | String | `""` | The OpenTelemetry span ID identifying the specific operation that produced this governance event. When present, MUST be a 16-character lowercase hexadecimal string conforming to the W3C Trace Context `parent-id` format. See Section 11.4. |
 | `parent_span_id` | String | `""` | The OpenTelemetry parent span ID. When present, MUST be a 16-character lowercase hexadecimal string. Enables AIGP events to participate in OTel span trees, connecting governance actions to the calling operation. See Section 11.4. |
@@ -499,7 +500,7 @@ Where:
 
 Implementations MUST use SHA-256 as the default hash algorithm for computing the `governance_hash` field. When SHA-256 is used, the `hash_type` field SHOULD be set to `"sha256"` (or MAY be omitted, as `"sha256"` is the default).
 
-Implementations MAY support additional hash algorithms (`sha384`, `sha512`) and MUST indicate the algorithm used in the `hash_type` field when a non-default algorithm is selected.
+Implementations MAY support additional hash algorithms (`sha384`, `sha512`) and the Merkle tree construction (`merkle-sha256`, see Section 8.8), and MUST indicate the algorithm used in the `hash_type` field when a non-default algorithm is selected.
 
 ### 8.2 Input Encoding
 
@@ -530,6 +531,106 @@ A verifier reconstructs the hash by applying the same algorithm to the same cont
 ### 8.7 Reproducibility
 
 If the same content is delivered to multiple agents, each resulting AIGP event MUST produce the same `governance_hash` value (assuming the same algorithm). This property enables auditors to verify that identical content was delivered to different agents.
+
+### 8.8 Merkle Tree Hash Computation
+
+#### 8.8.1 Overview
+
+When a governance action involves multiple governed resources (policies, prompts, tools), implementations MAY compute the `governance_hash` as a Merkle tree root instead of a flat hash over concatenated content. This enables verifiers to independently verify each resource's content without possessing all resources in the bundle.
+
+#### 8.8.2 Leaf Construction
+
+Each leaf in the Merkle tree corresponds to one governed resource. A leaf hash MUST be computed as:
+
+```
+leaf_hash = SHA-256(UTF-8(resource_type + ":" + resource_name + ":" + content))
+```
+
+Where:
+- `resource_type` MUST be one of `"policy"`, `"prompt"`, or `"tool"`.
+- `resource_name` is the AGRN-format name (e.g., `"policy.trading-limits"`).
+- `content` is the governed content string for that resource.
+- The `":"` separator is the literal colon character (U+003A).
+
+The prefix `resource_type:resource_name:` serves as a domain separator preventing cross-resource collision. Two different resource types with identical content MUST produce different leaf hashes.
+
+#### 8.8.3 Tree Construction Algorithm
+
+1. Compute leaf hashes for all governed resources per Section 8.8.2.
+2. Sort leaf hashes lexicographically (ascending, lowercase hexadecimal). Sorting ensures deterministic tree construction regardless of input order.
+3. If only one leaf exists, the leaf hash IS the root. The `hash_type` MUST be `"sha256"` (not `"merkle-sha256"`). This ensures backward compatibility with single-resource events.
+4. If multiple leaves exist, pair them left-to-right: `parent = SHA-256(UTF-8(left_hash + right_hash))` where `+` is string concatenation of the two 64-character hexadecimal strings.
+5. If the number of nodes at any level is odd, the last node MUST be promoted to the next level unchanged. Implementations MUST NOT duplicate the last node. This avoids the second-preimage vulnerability present in Bitcoin-style Merkle trees where a tree with N leaves could produce the same root as a tree with N+1 leaves.
+6. Repeat steps 4-5 until a single root remains.
+
+**Example (3 leaves):**
+
+```
+Sorted leaves: [hash_A, hash_B, hash_C]
+
+Level 0:  hash_A    hash_B    hash_C
+              \      /            |
+Level 1:    hash_AB          hash_C  (promoted)
+                \              /
+Level 2:        merkle_root
+```
+
+#### 8.8.4 `hash_type` Value
+
+When Merkle tree construction is used (more than one leaf), `hash_type` MUST be set to `"merkle-sha256"`. When only one resource is involved, `hash_type` MUST remain `"sha256"` and the `governance_merkle_tree` field MUST NOT be present.
+
+#### 8.8.5 `governance_merkle_tree` Structure
+
+When `hash_type` is `"merkle-sha256"`, the event SHOULD include a top-level `governance_merkle_tree` object with the following structure:
+
+```json
+{
+  "governance_merkle_tree": {
+    "algorithm": "sha256",
+    "leaf_count": 3,
+    "leaves": [
+      {
+        "resource_type": "policy",
+        "resource_name": "policy.refund-limits",
+        "hash": "1a2b3c4d..."
+      },
+      {
+        "resource_type": "prompt",
+        "resource_name": "prompt.customer-support-v3",
+        "hash": "5e6f7a8b..."
+      },
+      {
+        "resource_type": "tool",
+        "resource_name": "tool.order-lookup",
+        "hash": "9c0d1e2f..."
+      }
+    ]
+  }
+}
+```
+
+- `algorithm` — The hash algorithm used for leaf and internal node computation. MUST be `"sha256"`.
+- `leaf_count` — The number of leaves. MUST equal the length of the `leaves` array. MUST be ≥ 2.
+- `leaves` — An array of leaf objects sorted by `hash` value (lexicographic ascending). This is the same sort order used during tree construction (Section 8.8.3 step 2).
+
+Each leaf object MUST contain:
+- `resource_type` — One of `"policy"`, `"prompt"`, or `"tool"`.
+- `resource_name` — AGRN-format resource name.
+- `hash` — The 64-character lowercase hexadecimal leaf hash computed per Section 8.8.2.
+
+#### 8.8.6 Verification
+
+A verifier who possesses all governed resources can reconstruct the full Merkle tree and compare the computed root against `governance_hash`. If the values match, no resource content has been altered.
+
+A verifier who possesses only a subset of resources can verify that their resources' leaf hashes appear in the `governance_merkle_tree.leaves` array, providing partial verification. This is useful when different teams own different governed resources and need to verify their portion independently.
+
+Full Merkle proof paths (sibling hashes for inclusion proofs) are not included in this version of the specification but MAY be added in a future version.
+
+#### 8.8.7 Backward Compatibility
+
+- Single-resource events MUST NOT use Merkle tree construction. They produce the same flat SHA-256 hash as in previous AIGP versions.
+- The `governance_merkle_tree` field is OPTIONAL. Events without this field are valid under both old and new schema versions.
+- Consumers that do not understand Merkle trees can treat `governance_hash` as an opaque integrity token — the field format (64-character lowercase hex) is identical for both flat and Merkle hashes.
 
 ---
 
@@ -957,6 +1058,7 @@ The following is a fully annotated AIGP event representing a successful policy i
 
 | Version | Date | Changes |
 |---|---|---|
+| 0.4.0 | 2026-02-15 | Merkle tree governance hash. Adds `governance_merkle_tree` optional field. New `hash_type` value `"merkle-sha256"`. Section 8.8 defines leaf construction, tree algorithm, and verification. OTel attribute `aigp.governance.merkle.leaf_count`. Backward compatible: single-resource events unchanged. |
 | 0.3.0 | 2026-02-15 | OpenTelemetry integration. Adds `span_id`, `parent_span_id`, `trace_flags` fields. Adds spec sections 11.4 (OTel Span Correlation), 11.5 (AIGP Semantic Attributes), 11.6 (Baggage Propagation), 11.7 (W3C tracestate Vendor Key). Companion semantic conventions document and reference OTel Collector configuration. |
 | 0.2.1 | 2026-02-09 | Adds `policy_version` and `prompt_version` fields. Removes `version_id` and `version_number`. |
 | 0.2.0 | 2026-02-08 | Formal specification with RFC 2119 language. Security and privacy sections. Conformance levels. Transport bindings. AGRN naming. |

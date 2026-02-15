@@ -59,6 +59,11 @@ class AIGPAttributes:
     TOOLS_NAMES = "aigp.tools.names"
 
     # -------------------------------------------------------
+    # Span Attributes: Merkle Tree Governance
+    # -------------------------------------------------------
+    MERKLE_LEAF_COUNT = "aigp.governance.merkle.leaf_count"
+
+    # -------------------------------------------------------
     # Span Attributes: Denial and Violation
     # -------------------------------------------------------
     SEVERITY = "aigp.severity"
