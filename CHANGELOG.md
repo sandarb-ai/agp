@@ -5,6 +5,37 @@ All notable changes to the AIGP specification will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2026-02-15
+
+### Added
+- **Event Signing** — JWS Compact Serialization (RFC 7515) with ES256 (ECDSA P-256 + SHA-256) for non-repudiation of governance events
+- `event_signature` field — JWS Compact Serialization of the canonical event JSON (sorted keys, no whitespace, excluding signature fields)
+- `signature_key_id` field — AGRN-style identifier for the signing key (supports key rotation)
+- **Causal Ordering** — monotonic sequencing and cross-agent causality references
+- `sequence_number` field — auto-incrementing counter scoped to (agent_id, trace_id) for gap detection and ordering without wall-clock reliance
+- `causality_ref` field — event_id of the preceding event, creating a DAG of cross-agent dependencies
+- **UNVERIFIED_BOUNDARY event** — new event type in `boundary` category for Dark Node visibility when governed agents interact with ungoverned systems
+- **Pointer Pattern** — `hash_mode` ("content" | "pointer") and `content_ref` on Merkle tree leaves for large/external content governance
+- New Section 5.8: Proof Integrity Fields
+- Updated Section 14.2: Event Signing with JWS ES256 specification
+- Python SDK: `sign_event()` and `verify_event_signature()` functions
+- Python SDK: `AIGPInstrumentor.unverified_boundary()` convenience method
+- Python SDK: `causality_ref` parameter on `a2a_call()`, `inference_started()`, `inference_completed()`
+- Python SDK: auto-incrementing `sequence_number` in `_dual_emit()`
+- OTel semantic attributes: `aigp.event.signature`, `aigp.signature.key_id`, `aigp.sequence.number`, `aigp.causality.ref`
+- OTel span event: `aigp.boundary.unverified`
+- Comprehensive test suite for v0.8.0 features (test_v080_features.py)
+
+### Fixed
+- `a2a_call()` event_category corrected from `"audit"` to `"a2a"` (matching spec Section 6.8)
+- AGRN regex now includes all standard resource type prefixes (was missing `tool`, `memory`, `model`)
+
+### Changed
+- Standard event types: 30 → 31 (added UNVERIFIED_BOUNDARY)
+- Event categories: 14 → 15 (added boundary)
+- All version references bumped to 0.8.0
+- Backward compatible: all new fields have defaults, existing events unchanged
+
 ## [0.7.0] - 2026-02-15
 
 ### Added

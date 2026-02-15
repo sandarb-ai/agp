@@ -1,6 +1,6 @@
 # AI Governance Proof (AIGP) Specification
 
-**Version:** 0.7.0 (Draft)
+**Version:** 0.8.0 (Draft)
 
 **Status:** Draft
 
@@ -44,6 +44,7 @@ Future versions of this specification may introduce breaking changes. Implemente
   - [5.5 Denial and Policy Fields](#55-denial-and-policy-fields)
   - [5.6 Request Fields](#56-request-fields)
   - [5.7 Annotations, Timestamps, and Version](#57-annotations-timestamps-and-version)
+  - [5.8 Proof Integrity Fields](#58-proof-integrity-fields)
 - [6. Event Types](#6-event-types)
   - [6.1 Policy Injection Events](#61-policy-injection-events)
   - [6.2 Prompt Usage Events](#62-prompt-usage-events)
@@ -60,7 +61,9 @@ Future versions of this specification may introduce breaking changes. Implemente
   - [6.13 Inference Events](#613-inference-events)
   - [6.14 Human-in-the-Loop Events](#614-human-in-the-loop-events)
   - [6.15 Classification Events](#615-classification-events)
-  - [6.16 Custom Event Types](#616-custom-event-types)
+  - [6.16 Model Events](#616-model-events)
+  - [6.17 Boundary Events](#617-boundary-events)
+  - [6.18 Custom Event Types](#618-custom-event-types)
 - [7. Agent Governance Resource Names (AGRN)](#7-governance-resource-names-grn)
 - [8. Governance Hash Computation](#8-governance-hash-computation)
 - [9. Data Classification Levels](#9-data-classification-levels)
@@ -311,13 +314,24 @@ The following fields are OPTIONAL and provide extensibility, operational timesta
 | `template_rendered` | Boolean | `false` | Indicates whether the policy content was rendered with template variables before delivery. When `true`, the `governance_hash` MUST be computed over the rendered (post-substitution) content. |
 | `ingested_at` | String (DateTime) | *(none)* | The time at which the event was received by the analytics or storage system. MUST be in RFC 3339 format with millisecond precision and UTC timezone designator `Z`. This field enables measurement of ingestion latency (`ingested_at` minus `event_time`). |
 | `annotations` | Object | `{}` | Informational context for the governance event. Annotations are NOT included in governance hashes and are NOT governed resources. Implementations MAY use this field to attach regulatory hooks, domain-specific tags, or supplementary context that does not require cryptographic proof. Consumers MUST NOT require specific keys within `annotations` to process core AIGP events. Consumers MUST ignore annotation keys they do not recognize. |
-| `spec_version` | String | `""` | The AIGP specification version the producer implemented (e.g., `"0.7.0"`). Consumers MAY use this field to determine which features and resource types to expect. When absent or empty, consumers SHOULD NOT assume any particular version. |
+| `spec_version` | String | `""` | The AIGP specification version the producer implemented (e.g., `"0.8.0"`). Consumers MAY use this field to determine which features and resource types to expect. When absent or empty, consumers SHOULD NOT assume any particular version. |
+
+### 5.8 Proof Integrity Fields
+
+The following fields support non-repudiation and causal ordering of governance events. These fields are OPTIONAL.
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `event_signature` | String | `""` | JWS Compact Serialization (RFC 7515) of the governance event. The payload is the canonical JSON (sorted keys, no whitespace) of the event excluding `event_signature` and `signature_key_id`. Algorithm MUST be ES256 (ECDSA using P-256 and SHA-256). When present, MUST be a valid JWS Compact Serialization string. |
+| `signature_key_id` | String | `""` | AGRN-style identifier for the signing key used to produce `event_signature` (e.g., `aigp:org.finco:agent.trading-bot-v2:2026-02`). Enables key rotation and multi-agent key management. |
+| `sequence_number` | Integer | `0` | Monotonically increasing counter scoped to (`agent_id`, `trace_id`). Provides causal ordering within a single trace. Consumers can detect missing events (gaps in sequence) and reconstruct event ordering without relying on wall-clock timestamps. MUST be a non-negative integer. |
+| `causality_ref` | String | `""` | The `event_id` (UUID) of the causally preceding event. Creates a directed acyclic graph (DAG) of event dependencies across agents and traces. Used for cross-agent causal ordering where `sequence_number` (per-trace) is insufficient. |
 
 ---
 
 ## 6. Event Types
 
-The AIGP specification defines 28 standard event types across 14 categories. Implementations MUST use the standard event types for the governance actions described below. Implementations MAY define additional custom event types following the naming conventions in this section.
+The AIGP specification defines 31 standard event types across 15 categories. Implementations MUST use the standard event types for the governance actions described below. Implementations MAY define additional custom event types following the naming conventions in this section.
 
 ### 6.1 Policy Injection Events
 
@@ -594,14 +608,26 @@ The AIGP specification defines 28 standard event types across 14 categories. Imp
 - **MAY be present:** `data_classification`, `annotations`.
 - **Notes:** The `previous_hash` field records the prior model's identity, enabling auditors to track the complete model lineage within a session. Implementations SHOULD record both model identifiers in `annotations` (e.g., `annotations.previous_model`, `annotations.new_model`).
 
-### 6.17 Custom Event Types
+### 6.17 Boundary Events
 
-Implementations MAY define custom event types beyond the 30 standard types. Custom event types:
+**Category:** `boundary`
+
+#### UNVERIFIED_BOUNDARY
+
+- **Emitted when:** A governed agent interacts with an ungoverned (or governance-unverifiable) external system — a "Dark Node." Implementations SHOULD emit this event when an agent calls or receives data from a system that does not participate in AIGP governance.
+- **Required fields:** All fields from Section 5.1.
+- **SHOULD be present:** `data_classification`.
+- **MAY be present:** `governance_hash` (if content was exchanged), `annotations` (SHOULD include `annotations.target_agent_id`).
+- **Notes:** This event provides visibility into trust boundary crossings during partial AIGP adoption. Governed agents record their side of the interaction; the ungoverned system's behavior is unattested. Implementations SHOULD use `causality_ref` to link this event to the preceding governance action.
+
+### 6.18 Custom Event Types
+
+Implementations MAY define custom event types beyond the 31 standard types. Custom event types:
 
 - MUST follow the `RESOURCE_ACTION` naming convention in UPPER_SNAKE_CASE.
 - MUST match the pattern `^[A-Z][A-Z0-9_]*$`.
 - SHOULD use a category string that groups logically related events.
-- MUST NOT redefine the semantics of the 30 standard event types.
+- MUST NOT redefine the semantics of the 31 standard event types.
 
 Examples of domain-specific custom event types include `PATIENT_DATA_ACCESSED`, `CONSENT_VERIFIED`, and `TRADE_EXECUTION_AUDITED`.
 
@@ -648,7 +674,7 @@ Where:
 4. The `kebab-name` MUST NOT contain consecutive hyphens (`--`).
 5. The `kebab-name` MUST be at least one character long.
 6. The type prefix (`agent.`, `policy.`, `prompt.`, `context.`, `lineage.`, `memory.`, `model.`, `org.`) MUST be included as part of the AGRN and makes the resource self-describing in any AIGP event or log line.
-7. The complete AGRN MUST match the regular expression: `^(agent|policy|prompt|context|lineage|org)\.[a-z][a-z0-9]*(-[a-z0-9]+)*$`.
+7. The complete AGRN MUST match the regular expression: `^(agent|policy|prompt|tool|context|lineage|memory|model|org)\.[a-z][a-z0-9]*(-[a-z0-9]+)*$`.
 
 ### 7.5 Usage
 
@@ -720,6 +746,22 @@ Where:
 - The `":"` separator is the literal colon character (U+003A).
 
 The prefix `resource_type:resource_name:` serves as a domain separator preventing cross-resource collision. Two different resource types with identical content MUST produce different leaf hashes.
+
+##### Pointer Pattern (Large/External Content)
+
+When governed content exceeds a practical size threshold (e.g., 100 KB) or is stored externally, implementations MAY use the **Pointer Pattern** instead of hashing raw content:
+
+```
+leaf_hash = SHA-256(UTF-8(resource_type + ":" + resource_name + ":" + content_ref))
+```
+
+Where `content_ref` is a stable, immutable URI pointing to the governed content (e.g., `s3://aigp-governance/sha256:abc123...`). The Pointer Pattern creates a content-addressable chain: event → pointer hash → URI → immutable blob.
+
+Each leaf in the `governance_merkle_tree.leaves` array MAY include:
+- `hash_mode` — `"content"` (default, hash raw content) or `"pointer"` (hash the URI).
+- `content_ref` — The URI of the immutable content blob. MUST be present when `hash_mode` is `"pointer"`.
+
+When `hash_mode` is omitted, `"content"` is assumed. Existing single-resource events are unaffected (backward compatible).
 
 #### 8.8.3 Tree Construction Algorithm
 
@@ -1068,7 +1110,7 @@ This specification defines three conformance levels. Implementations MUST declar
 An implementation conforms to the **Core** level if it satisfies all of the following:
 
 1. Every produced AIGP event MUST contain all required fields as defined in Section 5.1 (`event_id`, `event_type`, `event_category`, `event_time`, `agent_id`, `governance_hash`, `trace_id`).
-2. The `event_type` field MUST contain a valid event type: either one of the 30 standard types defined in Section 6, or a custom type conforming to the naming rules in Section 6.17.
+2. The `event_type` field MUST contain a valid event type: either one of the 31 standard types defined in Section 6, or a custom type conforming to the naming rules in Section 6.18.
 3. The `event_id` MUST be a valid UUID v4.
 4. The `event_time` MUST be a valid RFC 3339 DateTime with millisecond precision and UTC timezone designator.
 5. The `governance_hash`, when non-empty, MUST be a valid lowercase hexadecimal SHA-256 digest (64 characters).
@@ -1136,12 +1178,15 @@ The `governance_hash` field provides **integrity verification** (tamper detectio
 
 ### 14.2 Event Signing
 
-Implementations that require authentication or non-repudiation SHOULD sign AIGP events using a digital signature algorithm. Recommended algorithms include:
+AIGP events support built-in non-repudiation through JWS Compact Serialization (RFC 7515) with ES256 (ECDSA using P-256 and SHA-256).
 
-- **Ed25519** -- for compact signatures and fast verification.
-- **ECDSA with P-256** -- for compatibility with existing PKI infrastructure.
+The `event_signature` field (Section 5.8) carries the JWS signature. The signing process:
 
-Signed events SHOULD include the signature in the `annotations` field (e.g., `annotations.signature`) and the signing key identifier in another key (e.g., `annotations.key_id`). Key management, certificate issuance, and trust chain establishment are outside the scope of this specification.
+1. Compute the canonical JSON of the event: sorted keys, no whitespace, excluding `event_signature` and `signature_key_id` fields.
+2. Produce a JWS Compact Serialization (`header.payload.signature`) where the payload is the canonical JSON.
+3. Record the JWS in `event_signature` and the key identifier in `signature_key_id`.
+
+Key management, certificate issuance, key rotation, and trust chain establishment are outside the scope of this specification. Implementations SHOULD use AGRN-style key identifiers (e.g., `aigp:org.finco:agent.trading-bot-v2:2026-02`) for key_id values.
 
 ### 14.3 Transport Security
 
@@ -1271,7 +1316,11 @@ The following is a fully annotated AIGP event representing a successful policy i
   "annotations": {"regulatory_hooks": ["FINRA", "SEC"]},
   "query_hash": "",
   "previous_hash": "",
-  "spec_version": "0.7.0"
+  "event_signature": "",
+  "signature_key_id": "",
+  "sequence_number": 0,
+  "causality_ref": "",
+  "spec_version": "0.8.0"
 }
 ```
 
@@ -1305,7 +1354,11 @@ The following is a fully annotated AIGP event representing a successful policy i
 | `annotations` | Informational context: regulatory hooks. Not included in governance hash. |
 | `query_hash` | Empty -- not a memory read event. |
 | `previous_hash` | Empty -- not a memory write or model switch event. |
-| `spec_version` | `0.7.0` -- the AIGP specification version the producer implemented. |
+| `event_signature` | Empty -- event is not signed in this example. When populated, contains a JWS Compact Serialization (Section 5.8). |
+| `signature_key_id` | Empty -- no signing key used. When populated, contains an AGRN-style key identifier. |
+| `sequence_number` | `0` -- causal ordering counter. Monotonically increasing per (`agent_id`, `trace_id`) pair (Section 5.8). |
+| `causality_ref` | Empty -- no causally preceding event referenced. When populated, contains the `event_id` of the prior event (Section 5.8). |
+| `spec_version` | `0.8.0` -- the AIGP specification version the producer implemented. |
 
 ---
 
@@ -1313,6 +1366,7 @@ The following is a fully annotated AIGP event representing a successful policy i
 
 | Version | Date | Changes |
 |---|---|---|
+| 0.8.0 | 2026-02-15 | Proof integrity. Adds event signing (JWS Compact Serialization, ES256 via `event_signature` and `signature_key_id` fields), causal ordering (`sequence_number` monotonic per agent_id+trace_id, `causality_ref` for cross-agent DAG), `UNVERIFIED_BOUNDARY` event type (boundary category for Dark Node visibility), and Pointer Pattern (`hash_mode` and `content_ref` on Merkle leaves for large/external content). New Section 5.8: Proof Integrity Fields. Updated Section 14.2: Event Signing with JWS specification. 31 standard event types across 15 categories. Backward compatible: all new fields have defaults. |
 | 0.7.0 | 2026-02-15 | Memory + Model resource types. Adds `"memory"` (agent-defined dynamic state, RAG retrieval) and `"model"` (inference engine identity) as standard governed resource types. 14 new event types (total: 30 across 14 categories): MEMORY_READ, MEMORY_WRITTEN, TOOL_INVOKED, TOOL_DENIED, CONTEXT_CAPTURED, LINEAGE_SNAPSHOT, INFERENCE_STARTED, INFERENCE_COMPLETED, INFERENCE_BLOCKED, HUMAN_OVERRIDE, HUMAN_APPROVAL, CLASSIFICATION_CHANGED, MODEL_LOADED, MODEL_SWITCHED. New fields: `query_hash` (MEMORY_READ), `previous_hash` (MEMORY_WRITTEN, MODEL_SWITCHED). AGRN `memory.` and `model.` prefixes. OTel attributes `aigp.memories.names`, `aigp.models.names`. Backward compatible: existing events unchanged. |
 | 0.6.0 | 2026-02-15 | Resources + Annotations extensibility model. Renames `metadata` field to `annotations` (informational, unhashed context). Removes `ext_` extension field prefix mechanism. Opens `resource_type` from closed enum to open pattern — implementations may define custom resource types. Adds `spec_version` optional field. Adds must-ignore rule for unknown resource types and annotation keys. Adds additive-only minor version guarantee. Rewrites Principle 5 as "Forward-Compatible Extensibility." |
 | 0.5.0 | 2026-02-15 | OpenLineage integration. Adds `"context"` (general pre-execution state) and `"lineage"` (data lineage snapshots) resource types for Merkle tree leaves. New Section 11.8: OpenLineage Data Lineage Integration (context/lineage resources, custom facets, emission granularity, active vs. passive lineage, triple-emit architecture). Custom facet schemas: AIGPGovernanceRunFacet, AIGPResourceInputFacet. Python SDK: `openlineage` module with `build_governance_run_facet()`, `build_resource_input_facets()`, `build_openlineage_run_event()`. Optional `openlineage_callback` on AIGPInstrumentor. AGRN `context.` and `lineage.` prefixes. OTel attributes `aigp.contexts.names`, `aigp.lineages.names`. Backward compatible: existing events unchanged. |

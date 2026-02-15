@@ -37,6 +37,7 @@ from aigp_otel.events import (
     create_aigp_event,
     compute_governance_hash,
     compute_merkle_governance_hash,
+    sign_event,
 )
 from aigp_otel.baggage import AIGPBaggage
 from aigp_otel.tracestate import AIGPTraceState
@@ -91,7 +92,17 @@ class AIGPInstrumentor:
         self.event_callback = event_callback
         self.openlineage_callback = openlineage_callback
 
-        self._tracer = trace.get_tracer(tracer_name, "0.7.0")
+        self._tracer = trace.get_tracer(tracer_name, "0.8.0")
+
+        # Causal ordering: auto-incrementing sequence per trace
+        self._sequence_counters: dict[str, int] = {}
+
+    def _next_sequence(self, trace_id: str) -> int:
+        """Increment and return the next sequence number for a given trace_id."""
+        current = self._sequence_counters.get(trace_id, 0)
+        current += 1
+        self._sequence_counters[trace_id] = current
+        return current
 
     def get_resource_attributes(self) -> dict[str, str]:
         """
@@ -191,6 +202,16 @@ class AIGPInstrumentor:
         if aigp_event.get("governance_merkle_tree"):
             attrs[AIGPAttributes.MERKLE_LEAF_COUNT] = aigp_event["governance_merkle_tree"]["leaf_count"]
 
+        # Proof integrity fields (v0.8.0)
+        if aigp_event.get("event_signature"):
+            attrs[AIGPAttributes.EVENT_SIGNATURE] = aigp_event["event_signature"]
+        if aigp_event.get("signature_key_id"):
+            attrs[AIGPAttributes.SIGNATURE_KEY_ID] = aigp_event["signature_key_id"]
+        if aigp_event.get("sequence_number"):
+            attrs[AIGPAttributes.SEQUENCE_NUMBER] = aigp_event["sequence_number"]
+        if aigp_event.get("causality_ref"):
+            attrs[AIGPAttributes.CAUSALITY_REF] = aigp_event["causality_ref"]
+
         span.add_event(event_name, attributes=attrs)
 
     def _dual_emit(
@@ -198,16 +219,26 @@ class AIGPInstrumentor:
         event_name: str,
         aigp_event: dict[str, Any],
         span: Optional[Span] = None,
+        causality_ref: str = "",
     ) -> dict[str, Any]:
         """
         Dual-emit: create AIGP event + OTel span event.
 
-        1. Emits OTel span event (observability backend).
-        2. Calls event_callback with AIGP event dict (compliance store).
-        3. Returns the AIGP event dict.
+        1. Auto-sets sequence_number (monotonic per trace_id).
+        2. Optionally sets causality_ref for cross-agent ordering.
+        3. Emits OTel span event (observability backend).
+        4. Calls event_callback with AIGP event dict (compliance store).
+        5. Returns the AIGP event dict.
         """
         if span is None:
             span = trace.get_current_span()
+
+        # Auto-set causal ordering fields (v0.8.0)
+        trace_id = aigp_event.get("trace_id", "")
+        if trace_id:
+            aigp_event["sequence_number"] = self._next_sequence(trace_id)
+        if causality_ref:
+            aigp_event["causality_ref"] = causality_ref
 
         # Emit OTel span event
         self._emit_span_event(span, event_name, aigp_event)
@@ -450,6 +481,7 @@ class AIGPInstrumentor:
         request_path: str = "",
         content: str = "",
         data_classification: str = "",
+        causality_ref: str = "",
         annotations: Optional[dict[str, Any]] = None,
         span: Optional[Span] = None,
     ) -> dict[str, Any]:
@@ -459,7 +491,7 @@ class AIGPInstrumentor:
 
         aigp_event = create_aigp_event(
             event_type="A2A_CALL",
-            event_category="audit",
+            event_category="a2a",
             agent_id=self.agent_id,
             trace_id=span_ctx["trace_id"],
             governance_hash=governance_hash,
@@ -475,7 +507,7 @@ class AIGPInstrumentor:
             annotations=annotations,
         )
 
-        return self._dual_emit(AIGPAttributes.EVENT_A2A_CALL, aigp_event, span)
+        return self._dual_emit(AIGPAttributes.EVENT_A2A_CALL, aigp_event, span, causality_ref=causality_ref)
 
     def governance_proof(
         self,
@@ -945,6 +977,7 @@ class AIGPInstrumentor:
         self,
         content: str,
         data_classification: str = "",
+        causality_ref: str = "",
         annotations: Optional[dict[str, Any]] = None,
         span: Optional[Span] = None,
     ) -> dict[str, Any]:
@@ -968,12 +1001,13 @@ class AIGPInstrumentor:
             annotations=annotations,
         )
 
-        return self._dual_emit(AIGPAttributes.EVENT_INFERENCE_STARTED, aigp_event, span)
+        return self._dual_emit(AIGPAttributes.EVENT_INFERENCE_STARTED, aigp_event, span, causality_ref=causality_ref)
 
     def inference_completed(
         self,
         content: str,
         data_classification: str = "",
+        causality_ref: str = "",
         annotations: Optional[dict[str, Any]] = None,
         span: Optional[Span] = None,
     ) -> dict[str, Any]:
@@ -997,7 +1031,7 @@ class AIGPInstrumentor:
             annotations=annotations,
         )
 
-        return self._dual_emit(AIGPAttributes.EVENT_INFERENCE_COMPLETED, aigp_event, span)
+        return self._dual_emit(AIGPAttributes.EVENT_INFERENCE_COMPLETED, aigp_event, span, causality_ref=causality_ref)
 
     def inference_blocked(
         self,
@@ -1220,3 +1254,59 @@ class AIGPInstrumentor:
         )
 
         return self._dual_emit(AIGPAttributes.EVENT_MODEL_SWITCHED, aigp_event, span)
+
+    # ===========================================================
+    # v0.8.0 — Boundary Events
+    # ===========================================================
+
+    def unverified_boundary(
+        self,
+        target_agent_id: str,
+        content: str = "",
+        data_classification: str = "",
+        causality_ref: str = "",
+        annotations: Optional[dict[str, Any]] = None,
+        span: Optional[Span] = None,
+    ) -> dict[str, Any]:
+        """
+        Emit an UNVERIFIED_BOUNDARY governance event.
+
+        Records that a governed agent interacted with an ungoverned (or
+        unverifiable) external system — a "Dark Node." This event provides
+        visibility into trust boundary crossings during partial AIGP adoption.
+
+        Args:
+            target_agent_id: Identifier of the ungoverned target agent/system.
+            content: Optional content exchanged (hashed as governance_hash).
+            data_classification: Data sensitivity level.
+            causality_ref: event_id of the preceding event in the causal chain.
+            annotations: Informational context. SHOULD include target_agent_id
+                and protocol details.
+            span: Optional OTel span.
+
+        Returns:
+            AIGP event dict.
+        """
+        span_ctx = self._get_span_context(span)
+        governance_hash = compute_governance_hash(content) if content else ""
+
+        merged_annotations = dict(annotations or {})
+        merged_annotations["target_agent_id"] = target_agent_id
+
+        aigp_event = create_aigp_event(
+            event_type="UNVERIFIED_BOUNDARY",
+            event_category="boundary",
+            agent_id=self.agent_id,
+            trace_id=span_ctx["trace_id"],
+            governance_hash=governance_hash,
+            span_id=span_ctx["span_id"],
+            parent_span_id=span_ctx["parent_span_id"],
+            trace_flags=span_ctx["trace_flags"],
+            agent_name=self.agent_name,
+            org_id=self.org_id,
+            org_name=self.org_name,
+            data_classification=data_classification,
+            annotations=merged_annotations,
+        )
+
+        return self._dual_emit(AIGPAttributes.EVENT_UNVERIFIED_BOUNDARY, aigp_event, span, causality_ref=causality_ref)

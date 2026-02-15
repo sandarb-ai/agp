@@ -60,12 +60,12 @@ from typing import Any
 PRODUCER = "https://github.com/sandarb-ai/aigp"
 
 RUN_FACET_SCHEMA_URL = (
-    "https://github.com/sandarb-ai/aigp/blob/v0.7.0/"
+    "https://github.com/sandarb-ai/aigp/blob/v0.8.0/"
     "integrations/openlineage/facets/AIGPGovernanceRunFacet.json"
 )
 
 RESOURCE_FACET_SCHEMA_URL = (
-    "https://github.com/sandarb-ai/aigp/blob/v0.7.0/"
+    "https://github.com/sandarb-ai/aigp/blob/v0.8.0/"
     "integrations/openlineage/facets/AIGPResourceInputFacet.json"
 )
 
@@ -104,7 +104,7 @@ def build_governance_run_facet(aigp_event: dict[str, Any]) -> dict[str, Any]:
         "leafCount": leaf_count,
         "agentId": aigp_event.get("agent_id", ""),
         "traceId": aigp_event.get("trace_id", ""),
-        "specVersion": "0.7.0",
+        "specVersion": "0.8.0",
     }
 
     # Infer enforcement result from event type

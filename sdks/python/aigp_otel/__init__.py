@@ -33,6 +33,8 @@ from aigp_otel.events import (
     compute_governance_hash,
     compute_leaf_hash,
     compute_merkle_governance_hash,
+    sign_event,
+    verify_event_signature,
 )
 from aigp_otel.attributes import AIGPAttributes
 from aigp_otel.baggage import AIGPBaggage
@@ -43,13 +45,15 @@ from aigp_otel.openlineage import (
     build_openlineage_run_event,
 )
 
-__version__ = "0.7.0"
+__version__ = "0.8.0"
 __all__ = [
     "AIGPInstrumentor",
     "create_aigp_event",
     "compute_governance_hash",
     "compute_leaf_hash",
     "compute_merkle_governance_hash",
+    "sign_event",
+    "verify_event_signature",
     "AIGPAttributes",
     "AIGPBaggage",
     "AIGPTraceState",

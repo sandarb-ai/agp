@@ -1,10 +1,10 @@
 # AIGP Semantic Conventions for OpenTelemetry
 
-**Version:** 0.3.0 (Draft)
+**Version:** 0.4.0 (Draft)
 
 **Status:** Experimental
 
-**Companion to:** [AIGP Specification v0.3.0](../../spec/aigp-spec.md)
+**Companion to:** [AIGP Specification v0.8.0](../../spec/aigp-spec.md)
 
 ---
 
@@ -67,6 +67,10 @@ Span attributes capture per-operation governance metadata. They are set on the s
 | `aigp.governance.merkle.leaf_count` | Int | Conditional | Number of leaves in Merkle tree (when `hash_type` is `merkle-sha256`) | `5` |
 | `aigp.data.classification` | String | Recommended | Data sensitivity level | `confidential` |
 | `aigp.enforcement.result` | String | Recommended | Governance decision | `allowed` or `denied` |
+| `aigp.event.signature` | String | No | JWS Compact Serialization (ES256) for event non-repudiation | `eyJhbGciOi...` |
+| `aigp.signature.key_id` | String | No | AGRN-style identifier for the signing key | `aigp:org.finco:agent.trading-bot-v2:2026-02` |
+| `aigp.sequence.number` | Int | No | Monotonic counter per (agent_id, trace_id) for causal ordering | `5` |
+| `aigp.causality.ref` | String | No | event_id of the causally preceding event (DAG of dependencies) | `a1b2c3d4-...` |
 
 ### 3.2 Policy Attributes
 
@@ -164,6 +168,7 @@ AIGP governance actions SHOULD be emitted as OTel span events. Each span event r
 | `aigp.classification.changed` | `CLASSIFICATION_CHANGED` | Data classification level changed |
 | `aigp.model.loaded` | `MODEL_LOADED` | Agent loaded a model for inference |
 | `aigp.model.switched` | `MODEL_SWITCHED` | Agent switched to a different model |
+| `aigp.boundary.unverified` | `UNVERIFIED_BOUNDARY` | Governed agent interacted with ungoverned system |
 
 ### 4.2 Event-to-Span Mapping
 
@@ -306,7 +311,7 @@ AIGP attributes complement (not replace) the existing `gen_ai.*` namespace:
 
 ## References
 
-- [AIGP Specification v0.3.0](../../spec/aigp-spec.md)
+- [AIGP Specification v0.8.0](../../spec/aigp-spec.md)
 - [OpenTelemetry Semantic Conventions](https://opentelemetry.io/docs/specs/semconv/)
 - [OpenTelemetry GenAI Semantic Conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/)
 - [W3C Trace Context](https://www.w3.org/TR/trace-context/)

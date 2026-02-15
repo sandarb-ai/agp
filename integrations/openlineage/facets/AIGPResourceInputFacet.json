@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/sandarb-ai/aigp/blob/v0.7.0/integrations/openlineage/facets/AIGPResourceInputFacet.json",
+  "$id": "https://github.com/sandarb-ai/aigp/blob/v0.8.0/integrations/openlineage/facets/AIGPResourceInputFacet.json",
   "$defs": {
     "AIGPResourceInputFacet": {
       "allOf": [

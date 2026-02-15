@@ -138,7 +138,7 @@ class TestCreateAIGPEvent:
         assert event["denial_reason"] == ""
         assert event["severity"] == ""
         assert event["annotations"] == {}
-        assert event["spec_version"] == "0.7.0"
+        assert event["spec_version"] == "0.8.0"
 
     def test_query_hash_field(self):
         """v0.7.0: query_hash is included when provided."""

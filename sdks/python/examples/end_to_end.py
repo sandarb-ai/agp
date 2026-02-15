@@ -62,7 +62,7 @@ AIGP governs seven resource types, each with domain-separated hashing:
 Scenarios
 ---------
 
-This example walks through 13 scenarios, each building on the previous:
+This example walks through 17 scenarios, each building on the previous:
 
     1. OTel tracer initialization with AIGP Resource attributes (agent identity)
     2. Single policy injection — SHA-256 hash, dual-emit (AIGP event + OTel span)
@@ -77,6 +77,10 @@ This example walks through 13 scenarios, each building on the previous:
     11. Tool governance — TOOL_INVOKED event
     12. Inference lifecycle — INFERENCE_STARTED → INFERENCE_COMPLETED
     13. Model governance — MODEL_LOADED + MODEL_SWITCHED with previous_hash
+    14. Event signing — JWS ES256 non-repudiation with sign_event/verify_event_signature
+    15. Causal ordering — sequence_number auto-increment + causality_ref DAG
+    16. Dark Node boundary — UNVERIFIED_BOUNDARY for ungoverned system interaction
+    17. Pointer Pattern — Merkle tree with hash_mode="pointer" for large content
 
 Run
 ---
@@ -193,7 +197,7 @@ def main():
     provider.add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter()))
     trace.set_tracer_provider(provider)
 
-    tracer = trace.get_tracer("aigp.example", "0.7.0")
+    tracer = trace.get_tracer("aigp.example", "0.8.0")
 
     # =====================================================================
     # Scenario 2: Single Policy Injection
@@ -791,9 +795,193 @@ def main():
         print(f"    previous_hash:   {switched['previous_hash'][:16]}... (old model)")
 
     # =====================================================================
+    # Scenario 14: Event Signing (v0.8.0)
+    # =====================================================================
+    #
+    # AIGP v0.8.0 adds JWS Compact Serialization (RFC 7515) with ES256
+    # for non-repudiation of governance events. Each event can be signed
+    # with an ECDSA P-256 key, and the signature can be independently
+    # verified by any party holding the public key.
+    #
+    # The signing process:
+    #   1. Canonical JSON (sorted keys, no whitespace, excluding signature fields)
+    #   2. JWS Compact Serialization: header.payload.signature
+    #   3. event_signature stores the JWS, signature_key_id identifies the key
+    #
+    print("\n=== Scenario 14: Event Signing ===")
+
+    try:
+        from cryptography.hazmat.primitives.asymmetric import ec
+        from cryptography.hazmat.primitives import serialization
+        from aigp_otel.events import sign_event, verify_event_signature
+
+        # Generate a test key pair (in production, use a managed key store)
+        private_key = ec.generate_private_key(ec.SECP256R1())
+        private_pem = private_key.private_bytes(
+            serialization.Encoding.PEM,
+            serialization.PrivateFormat.PKCS8,
+            serialization.NoEncryption(),
+        )
+        public_pem = private_key.public_key().public_bytes(
+            serialization.Encoding.PEM,
+            serialization.PublicFormat.SubjectPublicKeyInfo,
+        )
+
+        with tracer.start_as_current_span("signing.demo") as span:
+            event = instrumentor.inject_success(
+                policy_name="policy.trading-limits",
+                policy_version=4,
+                content="Maximum single position: $10M",
+                data_classification="confidential",
+                span=span,
+            )
+
+            # Sign the event
+            signed = sign_event(
+                event,
+                private_key_pem=private_pem,
+                key_id="aigp:org.finco:agent.trading-bot-v2:2026-02",
+            )
+            print(f"\n  Signed event:")
+            print(f"    signature_key_id: {signed['signature_key_id']}")
+            print(f"    event_signature:  {signed['event_signature'][:40]}...")
+
+            # Verify the signature
+            is_valid = verify_event_signature(signed, public_key_pem=public_pem)
+            print(f"    signature valid:  {is_valid}")
+
+    except ImportError:
+        print("  (skipped — 'cryptography' package not installed)")
+
+    # =====================================================================
+    # Scenario 15: Causal Ordering (v0.8.0)
+    # =====================================================================
+    #
+    # AIGP v0.8.0 adds two fields for causal ordering:
+    #   - sequence_number: monotonic counter per (agent_id, trace_id)
+    #   - causality_ref: event_id of the causally preceding event
+    #
+    # sequence_number enables gap detection (missing events) and ordering
+    # without relying on wall-clock timestamps. causality_ref creates a
+    # directed acyclic graph (DAG) of event dependencies.
+    #
+    print("\n=== Scenario 15: Causal Ordering ===")
+
+    with tracer.start_as_current_span("causal.demo") as span:
+        # First event in the trace — sequence_number = 1
+        e1 = instrumentor.inference_started(
+            content="User query: analyze market trends",
+            data_classification="internal",
+            span=span,
+        )
+        print(f"\n  Event 1 (INFERENCE_STARTED):")
+        print(f"    sequence_number: {e1['sequence_number']}")
+        print(f"    event_id:        {e1['event_id']}")
+
+        # Second event — sequence_number = 2, causality_ref points to e1
+        e2 = instrumentor.inference_completed(
+            content="Market analysis: bullish on tech sector",
+            data_classification="internal",
+            causality_ref=e1["event_id"],
+            span=span,
+        )
+        print(f"\n  Event 2 (INFERENCE_COMPLETED):")
+        print(f"    sequence_number: {e2['sequence_number']}")
+        print(f"    causality_ref:   {e2['causality_ref']}")
+
+        # Third event — sequence_number = 3, causality_ref points to e2
+        e3 = instrumentor.a2a_call(
+            request_method="A2A",
+            request_path="/tasks/send",
+            data_classification="internal",
+            causality_ref=e2["event_id"],
+            span=span,
+        )
+        print(f"\n  Event 3 (A2A_CALL):")
+        print(f"    sequence_number: {e3['sequence_number']}")
+        print(f"    causality_ref:   {e3['causality_ref']}")
+
+    # =====================================================================
+    # Scenario 16: Dark Node Boundary (v0.8.0)
+    # =====================================================================
+    #
+    # In partial AIGP adoption, governed agents will interact with
+    # ungoverned systems ("Dark Nodes"). The UNVERIFIED_BOUNDARY event
+    # records the governed agent's side of such interactions, providing
+    # visibility into trust boundary crossings.
+    #
+    # The governed agent records:
+    #   - What it sent/received (governance_hash)
+    #   - Who it interacted with (annotations.target_agent_id)
+    #   - When and in what context (trace_id, span_id)
+    #
+    # The ungoverned system's behavior is unattested — that's the point.
+    #
+    print("\n=== Scenario 16: Dark Node Boundary ===")
+
+    with tracer.start_as_current_span("boundary.demo") as span:
+        event = instrumentor.unverified_boundary(
+            target_agent_id="agent.legacy-risk-engine",
+            content='{"request": "calculate_var", "portfolio_id": "PF-1234"}',
+            data_classification="confidential",
+            annotations={
+                "protocol": "REST",
+                "endpoint": "https://legacy-risk.internal/api/var",
+                "reason": "Legacy system not yet AIGP-enabled",
+            },
+            span=span,
+        )
+        print(f"\n  UNVERIFIED_BOUNDARY:")
+        print(f"    event_type:       {event['event_type']}")
+        print(f"    event_category:   {event['event_category']}")
+        print(f"    target_agent_id:  {event['annotations']['target_agent_id']}")
+        print(f"    governance_hash:  {event['governance_hash'][:16]}...")
+
+    # =====================================================================
+    # Scenario 17: Pointer Pattern (v0.8.0)
+    # =====================================================================
+    #
+    # For large governed content (model weights, dataset snapshots, etc.),
+    # hashing the full content inline is impractical. The Pointer Pattern
+    # allows hashing a stable URI instead:
+    #
+    #   Content mode (default): leaf_hash = SHA-256("type:name:" + content)
+    #   Pointer mode:           leaf_hash = SHA-256("type:name:" + content_ref)
+    #
+    # The content_ref is an immutable URI (e.g., S3 object with content-hash
+    # as key). The chain: event → pointer hash → URI → immutable blob.
+    #
+    print("\n=== Scenario 17: Pointer Pattern ===")
+
+    from aigp_otel.events import compute_leaf_hash, compute_merkle_governance_hash
+
+    # Mix of content and pointer mode leaves
+    resources = [
+        # Small policy — hash content directly
+        {"resource_type": "policy", "resource_name": "policy.trading-limits",
+         "content": "Maximum position: $10M"},
+        # Large model weights — hash the URI pointer
+        {"resource_type": "model", "resource_name": "model.gpt4-trading-v2",
+         "content": "", "hash_mode": "pointer",
+         "content_ref": "s3://aigp-governance/models/sha256:abc123def456"},
+        # Small prompt — hash content directly
+        {"resource_type": "prompt", "resource_name": "prompt.scoring-v3",
+         "content": "You are a credit scoring assistant"},
+    ]
+
+    root, tree = compute_merkle_governance_hash(resources)
+    print(f"\n  Merkle root:  {root[:16]}...")
+    print(f"  Leaf count:   {tree['leaf_count']}")
+    for leaf in tree["leaves"]:
+        mode = leaf.get("hash_mode", "content")
+        ref = leaf.get("content_ref", "")
+        print(f"    {leaf['resource_type']:8s} {leaf['resource_name']:40s} mode={mode}" +
+              (f" ref={ref[:30]}..." if ref else ""))
+
+    # =====================================================================
     # Done
     # =====================================================================
-    print("\n=== All scenarios complete ===")
+    print("\n=== All 17 scenarios complete ===")
     print("AIGP events went to: compliance_store_callback (simulated AI governance store)")
     print("OTel spans went to:  ConsoleSpanExporter (simulated observability backend)")
     print("OpenLineage events:  built for any OpenLineage-compatible lineage backend")

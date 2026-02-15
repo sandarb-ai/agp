@@ -604,7 +604,7 @@ class TestNewEventCommon:
             assert uuid_pattern.match(event["event_id"]), f"Invalid event_id: {event['event_id']}"
 
     def test_all_events_have_spec_version(self, instrumentor):
-        """All new events must have spec_version 0.7.0."""
+        """All new events must have spec_version 0.8.0."""
         tracer = trace.get_tracer("test")
         with tracer.start_as_current_span("test-span") as span:
             events = [
@@ -614,7 +614,7 @@ class TestNewEventCommon:
                 instrumentor.model_switched("model.test", "c", span=span),
             ]
         for event in events:
-            assert event["spec_version"] == "0.7.0"
+            assert event["spec_version"] == "0.8.0"
 
     def test_event_callback_called(self):
         """Event callback is called for new event types."""

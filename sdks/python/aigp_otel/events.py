@@ -4,13 +4,19 @@ AIGP Event Creation
 
 Functions for creating AIGP-compliant governance events with
 OpenTelemetry correlation fields (span_id, parent_span_id, trace_flags).
+
+v0.8.0 adds proof integrity (event signing via JWS ES256),
+monotonic sequencing, causality references, and the Pointer Pattern
+for large/external resource governance.
 """
 
+import base64
 import hashlib
+import json
 import re
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 # Pattern for valid resource types (AIGP Spec Section 8.8.2).
 # Open pattern: lowercase kebab-case. Standard types: policy, prompt, tool, lineage, context, memory, model.
@@ -49,11 +55,13 @@ def compute_leaf_hash(
     resource_type: str,
     resource_name: str,
     content: str,
+    hash_mode: str = "content",
+    content_ref: str = "",
 ) -> str:
     """
     Compute a Merkle leaf hash for a single governed resource.
 
-    Leaf = SHA-256(resource_type + ":" + resource_name + ":" + content)
+    Leaf = SHA-256(resource_type + ":" + resource_name + ":" + hashable_content)
 
     The domain separator (resource_type:resource_name:) prevents
     cross-resource collisions: a policy and a prompt with identical
@@ -64,7 +72,12 @@ def compute_leaf_hash(
             Standard types: "policy", "prompt", "tool", "lineage", "context", "memory", "model".
             Custom types (e.g., "compliance", "approval") are permitted.
         resource_name: AGRN-format name (e.g., "policy.trading-limits").
-        content: The governed content string.
+        content: The governed content string. Used when hash_mode="content".
+        hash_mode: "content" (default) hashes the raw content. "pointer" hashes
+            the content_ref URI instead — for large/external content (Pointer Pattern).
+        content_ref: When hash_mode="pointer", the URI of the immutable content blob
+            (e.g., "s3://aigp-governance/sha256:abc123..."). MUST be provided when
+            hash_mode="pointer".
 
     Returns:
         Lowercase hexadecimal hash string (64 chars, SHA-256).
@@ -75,7 +88,13 @@ def compute_leaf_hash(
             "Must match pattern ^[a-z][a-z0-9]*(-[a-z0-9]+)*$ "
             "(e.g., 'policy', 'prompt', 'tool', 'lineage', 'context', 'memory', 'model', 'compliance')."
         )
-    prefixed = f"{resource_type}:{resource_name}:{content}"
+    if hash_mode == "pointer":
+        if not content_ref:
+            raise ValueError("content_ref is required when hash_mode='pointer'")
+        hashable = content_ref
+    else:
+        hashable = content
+    prefixed = f"{resource_type}:{resource_name}:{hashable}"
     return hashlib.sha256(prefixed.encode("utf-8")).hexdigest()
 
 
@@ -119,8 +138,30 @@ def _compute_merkle_root(sorted_hashes: list[str]) -> str:
     return level[0]
 
 
+def _normalize_resource(
+    resource: Union[tuple, dict],
+) -> dict[str, str]:
+    """Normalize a resource entry to a dict with standard keys."""
+    if isinstance(resource, (list, tuple)):
+        return {
+            "resource_type": resource[0],
+            "resource_name": resource[1],
+            "content": resource[2],
+            "hash_mode": "content",
+            "content_ref": "",
+        }
+    # dict form — Pointer Pattern support
+    return {
+        "resource_type": resource["resource_type"],
+        "resource_name": resource["resource_name"],
+        "content": resource.get("content", ""),
+        "hash_mode": resource.get("hash_mode", "content"),
+        "content_ref": resource.get("content_ref", ""),
+    }
+
+
 def compute_merkle_governance_hash(
-    resources: list[tuple[str, str, str]],
+    resources: list[Union[tuple[str, str, str], dict[str, Any]]],
 ) -> tuple[str, dict | None]:
     """
     Compute Merkle tree governance hash for multiple governed resources.
@@ -133,11 +174,9 @@ def compute_merkle_governance_hash(
     governance_hash.
 
     Args:
-        resources: List of (resource_type, resource_name, content) tuples.
-            resource_type: Any valid type (e.g., "policy", "prompt", "tool",
-                "lineage", "context", "memory", "model", or custom types like "compliance")
-            resource_name: AGRN name (e.g., "policy.trading-limits")
-            content: The governed content string
+        resources: List of (resource_type, resource_name, content) tuples
+            OR list of dicts with keys: resource_type, resource_name, content,
+            and optional hash_mode ("content"|"pointer"), content_ref (URI).
 
     Returns:
         Tuple of (root_hash, merkle_tree_dict):
@@ -148,21 +187,37 @@ def compute_merkle_governance_hash(
     if not resources:
         raise ValueError("At least one resource is required")
 
-    if len(resources) == 1:
-        # Single resource: flat hash over content only (backward compatible)
-        _rtype, _rname, content = resources[0]
-        flat_hash = compute_governance_hash(content)
+    normalized = [_normalize_resource(r) for r in resources]
+
+    if len(normalized) == 1:
+        entry = normalized[0]
+        if entry["hash_mode"] == "pointer":
+            flat_hash = compute_governance_hash(entry["content_ref"])
+        else:
+            flat_hash = compute_governance_hash(entry["content"])
         return flat_hash, None
 
     # Multiple resources: compute Merkle tree
     leaves = []
-    for resource_type, resource_name, content in resources:
-        leaf_hash = compute_leaf_hash(resource_type, resource_name, content)
-        leaves.append({
-            "resource_type": resource_type,
-            "resource_name": resource_name,
+    for entry in normalized:
+        leaf_hash = compute_leaf_hash(
+            entry["resource_type"],
+            entry["resource_name"],
+            entry["content"],
+            hash_mode=entry["hash_mode"],
+            content_ref=entry["content_ref"],
+        )
+        leaf: dict[str, Any] = {
+            "resource_type": entry["resource_type"],
+            "resource_name": entry["resource_name"],
             "hash": leaf_hash,
-        })
+        }
+        # Include hash_mode and content_ref when non-default (Pointer Pattern)
+        if entry["hash_mode"] != "content":
+            leaf["hash_mode"] = entry["hash_mode"]
+        if entry["content_ref"]:
+            leaf["content_ref"] = entry["content_ref"]
+        leaves.append(leaf)
 
     # Sort leaves by hash (lexicographic ascending) for deterministic tree
     leaves.sort(key=lambda leaf: leaf["hash"])
@@ -178,6 +233,163 @@ def compute_merkle_governance_hash(
 
     return root, merkle_tree
 
+
+# ---------------------------------------------------------------------------
+# Event Signing (v0.8.0 — JWS Compact Serialization with ES256)
+# ---------------------------------------------------------------------------
+
+def _base64url_encode(data: bytes) -> str:
+    """Base64url encode without padding (per RFC 7515)."""
+    return base64.urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
+
+
+def _base64url_decode(s: str) -> bytes:
+    """Base64url decode with padding restoration."""
+    s += "=" * (4 - len(s) % 4)
+    return base64.urlsafe_b64decode(s)
+
+
+def _canonical_json(event: dict[str, Any]) -> bytes:
+    """
+    Produce canonical JSON for signing: sorted keys, no whitespace,
+    excluding event_signature and signature_key_id fields.
+    """
+    filtered = {
+        k: v for k, v in event.items()
+        if k not in ("event_signature", "signature_key_id")
+    }
+    return json.dumps(filtered, sort_keys=True, separators=(",", ":")).encode("utf-8")
+
+
+def sign_event(
+    event: dict[str, Any],
+    private_key_pem: bytes,
+    key_id: str = "",
+) -> dict[str, Any]:
+    """
+    Sign an AIGP event using JWS Compact Serialization with ES256.
+
+    The payload is the canonical JSON of the event (sorted keys, no
+    whitespace) with event_signature and signature_key_id excluded.
+
+    Args:
+        event: An AIGP event dict (as returned by create_aigp_event).
+        private_key_pem: PEM-encoded EC private key bytes (P-256 curve).
+        key_id: AGRN-style key identifier to record in signature_key_id.
+
+    Returns:
+        A copy of the event dict with event_signature (JWS Compact
+        Serialization) and signature_key_id populated.
+
+    Raises:
+        ImportError: If the ``cryptography`` package is not installed.
+    """
+    try:
+        from cryptography.hazmat.primitives import hashes, serialization
+        from cryptography.hazmat.primitives.asymmetric import ec
+        from cryptography.hazmat.primitives.asymmetric.utils import decode_dss_signature
+    except ImportError:
+        raise ImportError(
+            "The 'cryptography' package is required for event signing. "
+            "Install it with: pip install cryptography"
+        )
+
+    # Load the private key
+    private_key = serialization.load_pem_private_key(private_key_pem, password=None)
+
+    # Build JWS components
+    header = {"alg": "ES256", "typ": "JWT"}
+    if key_id:
+        header["kid"] = key_id
+
+    header_b64 = _base64url_encode(
+        json.dumps(header, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    )
+    payload_b64 = _base64url_encode(_canonical_json(event))
+    signing_input = f"{header_b64}.{payload_b64}".encode("ascii")
+
+    # Sign with ES256 (ECDSA using P-256 and SHA-256)
+    der_signature = private_key.sign(signing_input, ec.ECDSA(hashes.SHA256()))
+
+    # Convert DER signature to fixed-size r || s (32 bytes each for P-256)
+    r, s = decode_dss_signature(der_signature)
+    r_bytes = r.to_bytes(32, byteorder="big")
+    s_bytes = s.to_bytes(32, byteorder="big")
+    signature_b64 = _base64url_encode(r_bytes + s_bytes)
+
+    jws_compact = f"{header_b64}.{payload_b64}.{signature_b64}"
+
+    signed_event = dict(event)
+    signed_event["event_signature"] = jws_compact
+    signed_event["signature_key_id"] = key_id
+    return signed_event
+
+
+def verify_event_signature(
+    event: dict[str, Any],
+    public_key_pem: bytes,
+) -> bool:
+    """
+    Verify the JWS ES256 signature on an AIGP event.
+
+    The canonical JSON is recomputed from the event (excluding
+    event_signature and signature_key_id), then verified against
+    the signature embedded in event_signature.
+
+    Args:
+        event: An AIGP event dict containing event_signature.
+        public_key_pem: PEM-encoded EC public key bytes (P-256 curve).
+
+    Returns:
+        True if the signature is valid, False otherwise.
+
+    Raises:
+        ImportError: If the ``cryptography`` package is not installed.
+    """
+    try:
+        from cryptography.hazmat.primitives import hashes, serialization
+        from cryptography.hazmat.primitives.asymmetric import ec
+        from cryptography.hazmat.primitives.asymmetric.utils import encode_dss_signature
+    except ImportError:
+        raise ImportError(
+            "The 'cryptography' package is required for event signature "
+            "verification. Install it with: pip install cryptography"
+        )
+
+    jws_compact = event.get("event_signature", "")
+    if not jws_compact:
+        return False
+
+    try:
+        parts = jws_compact.split(".")
+        if len(parts) != 3:
+            return False
+
+        header_b64, _payload_b64, signature_b64 = parts
+
+        # Recompute the payload from the event's canonical JSON
+        expected_payload_b64 = _base64url_encode(_canonical_json(event))
+        signing_input = f"{header_b64}.{expected_payload_b64}".encode("ascii")
+
+        # Decode the fixed-size r || s signature back to DER
+        sig_bytes = _base64url_decode(signature_b64)
+        if len(sig_bytes) != 64:
+            return False
+        r = int.from_bytes(sig_bytes[:32], byteorder="big")
+        s = int.from_bytes(sig_bytes[32:], byteorder="big")
+        der_signature = encode_dss_signature(r, s)
+
+        # Load public key and verify
+        public_key = serialization.load_pem_public_key(public_key_pem)
+        public_key.verify(der_signature, signing_input, ec.ECDSA(hashes.SHA256()))
+        return True
+    except Exception:
+        return False
+
+
+# ---------------------------------------------------------------------------
+# AIGP Event Creation
+# ---------------------------------------------------------------------------
 
 def create_aigp_event(
     event_type: str,
@@ -218,17 +430,27 @@ def create_aigp_event(
     previous_hash: str = "",
     # Annotations (Section 5.7)
     annotations: Optional[dict[str, Any]] = None,
+    # Proof integrity fields (v0.8.0)
+    event_signature: str = "",
+    signature_key_id: str = "",
+    sequence_number: int = 0,
+    causality_ref: str = "",
     # Version
-    spec_version: str = "0.7.0",
+    spec_version: str = "0.8.0",
     # Merkle tree (Section 8.8)
     governance_merkle_tree: Optional[dict[str, Any]] = None,
 ) -> dict[str, Any]:
     """
-    Create an AIGP event conforming to the v0.7.0 schema.
+    Create an AIGP event conforming to the v0.8.0 schema.
 
     This function creates the standalone AIGP JSON event (the governance
     record). For the OTel span event (the observability record), use
     AIGPInstrumentor which handles dual-emit.
+
+    v0.8.0 adds proof integrity fields: event_signature (JWS Compact
+    Serialization), signature_key_id (AGRN-style key identifier),
+    sequence_number (monotonic per agent_id+trace_id), and
+    causality_ref (preceding event_id for causal ordering).
 
     Args:
         event_type: AIGP event type (e.g., "INJECT_SUCCESS").
@@ -242,11 +464,15 @@ def create_aigp_event(
         query_hash: SHA-256 of retrieval query (MEMORY_READ). Optional.
         previous_hash: SHA-256 of prior state (MEMORY_WRITTEN, MODEL_SWITCHED). Optional.
         annotations: Informational context (not hashed). Optional.
-        spec_version: AIGP spec version. Default "0.7.0".
-        ... (remaining fields per AIGP spec)
+        event_signature: JWS Compact Serialization. Typically set via sign_event().
+        signature_key_id: AGRN-style key identifier for the signing key.
+        sequence_number: Monotonic counter per (agent_id, trace_id). Default 0.
+        causality_ref: event_id of the preceding event in the causal chain.
+        spec_version: AIGP spec version. Default "0.8.0".
+        governance_merkle_tree: Merkle tree dict (Section 8.8). Optional.
 
     Returns:
-        Dict conforming to AIGP event schema v0.7.0.
+        Dict conforming to AIGP event schema v0.8.0.
     """
     now = datetime.now(timezone.utc)
 
@@ -293,6 +519,11 @@ def create_aigp_event(
         "previous_hash": previous_hash,
         # Annotations (Section 5.7) — informational, not hashed
         "annotations": annotations or {},
+        # Proof integrity fields (v0.8.0)
+        "event_signature": event_signature,
+        "signature_key_id": signature_key_id,
+        "sequence_number": sequence_number,
+        "causality_ref": causality_ref,
         # Version (Section 5.7)
         "spec_version": spec_version,
     }

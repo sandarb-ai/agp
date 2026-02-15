@@ -32,6 +32,10 @@ class AIGPAttributes:
     GOVERNANCE_HASH_TYPE = "aigp.governance.hash_type"
     DATA_CLASSIFICATION = "aigp.data.classification"
     ENFORCEMENT_RESULT = "aigp.enforcement.result"
+    EVENT_SIGNATURE = "aigp.event.signature"
+    SIGNATURE_KEY_ID = "aigp.signature.key_id"
+    SEQUENCE_NUMBER = "aigp.sequence.number"
+    CAUSALITY_REF = "aigp.causality.ref"
 
     # -------------------------------------------------------
     # Span Attributes: Policy (singular — one policy per span)
@@ -98,6 +102,7 @@ class AIGPAttributes:
     EVENT_CLASSIFICATION_CHANGED = "aigp.classification.changed"
     EVENT_MODEL_LOADED = "aigp.model.loaded"
     EVENT_MODEL_SWITCHED = "aigp.model.switched"
+    EVENT_UNVERIFIED_BOUNDARY = "aigp.boundary.unverified"
 
     # -------------------------------------------------------
     # Enforcement result values

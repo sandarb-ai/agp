@@ -1,7 +1,7 @@
 # AI Governance Proof (AIGP)&trade;
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
-[![Spec](https://img.shields.io/badge/Spec-v0.7.0-violet.svg)](./spec/aigp-spec.md)
+[![Spec](https://img.shields.io/badge/Spec-v0.8.0-violet.svg)](./spec/aigp-spec.md)
 [![Schema](https://img.shields.io/badge/JSON_Schema-valid-green.svg)](./schema/aigp-event.schema.json)
 [![OTel](https://img.shields.io/badge/OpenTelemetry-compatible-orange.svg)](./integrations/opentelemetry/semantic-conventions.md)
 [![OpenLineage](https://img.shields.io/badge/OpenLineage-compatible-blueviolet.svg)](./integrations/openlineage/semantic-conventions.md)
@@ -95,11 +95,18 @@ Optional but recommended: `policy_name`, `policy_version`, `prompt_name`, `promp
 4. **Flat and queryable.** Single wide event table — no joins for governance queries. Designed for OLAP stores.
 5. **Forward-compatible extensibility.** Two primitives: **Resources** (governed, hashed, in the Merkle tree) and **Annotations** (informational, unhashed). Open resource types — implementations define custom types without a spec change. Consumers ignore what they don't recognize.
 
+### What's New in v0.8.0
+
+- **Event signing (JWS ES256 non-repudiation)** — every governance event can carry a JWS Compact Serialization signature (RFC 7515) with ES256, providing cryptographic non-repudiation and key rotation via `signature_key_id`
+- **Causal ordering (`sequence_number` + `causality_ref`)** — monotonic per-agent sequencing for gap detection and a `causality_ref` DAG linking cross-agent event dependencies, eliminating wall-clock reliance
+- **Dark Node visibility (`UNVERIFIED_BOUNDARY`)** — new event type in the `boundary` category emitted when a governed agent interacts with an ungoverned system, making trust boundaries explicit
+- **Pointer Pattern for large content governance** — `hash_mode` ("content" | "pointer") and `content_ref` on Merkle tree leaves allow governance of large or external content by hashing a reference pointer
+
 ---
 
 ## Event Types
 
-AIGP defines 30 event types across 14 categories. Implementations may extend these using the same `RESOURCE_ACTION` naming convention.
+AIGP defines 31 event types across 15 categories. Implementations may extend these using the same `RESOURCE_ACTION` naming convention.
 
 | Category | Event Types | When emitted |
 |----------|------------|--------------|
@@ -119,6 +126,7 @@ AIGP defines 30 event types across 14 categories. Implementations may extend the
 | Human | `HUMAN_OVERRIDE`, `HUMAN_APPROVAL` | Human-in-the-loop decisions |
 | Classification | `CLASSIFICATION_CHANGED` | Data classification level changes |
 | Model | `MODEL_LOADED`, `MODEL_SWITCHED` | Model identity governance |
+| Boundary | `UNVERIFIED_BOUNDARY` | Governed agent interacts with ungoverned system |
 
 ---
 
@@ -199,7 +207,7 @@ A trading bot successfully receives a governed policy:
   "data_classification": "confidential",
   "template_rendered": true,
   "annotations": {"regulatory_hooks": ["FINRA", "SEC"]},
-  "spec_version": "0.7.0"
+  "spec_version": "0.8.0"
 }
 ```
 
@@ -260,7 +268,7 @@ event = instrumentor.inject_success(
 
 ## OpenLineage Integration
 
-AIGP connects AI governance proof to data lineage via OpenLineage custom facets. Seven governed resource types — policy, prompt, tool, lineage, context, memory, model — are hashed as Merkle leaves, providing tamper-proof evidence of the complete governance context. The `"memory"` resource type captures agent dynamic state (conversation history, RAG results), while `"model"` captures inference engine identity (model card, weights hash).
+AIGP connects AI governance proof to data lineage via OpenLineage custom facets. Seven governed resource types — policy, prompt, tool, lineage, context, memory, model — are hashed as Merkle leaves, providing tamper-proof evidence of the complete governance context. The `"memory"` resource type captures agent dynamic state (conversation history, RAG results), while `"model"` captures inference engine identity (model card, weights hash). In v0.8.0, the **Pointer Pattern** (`hash_mode` + `content_ref`) enables governance of large or external content by hashing a reference pointer instead of the full content.
 
 | Layer | Standard | What It Shows | Backend |
 |---|---|---|---|
@@ -294,7 +302,7 @@ But AIGP doesn't require Sandarb. Any platform that produces events conforming t
 We don't have all the answers. AI governance is a new field, and the right format will emerge from real-world use across different industries, regulatory regimes, and agent architectures.
 
 - **Use it and tell us what's missing.** If the schema doesn't capture something your regulators need, that's exactly the feedback we want.
-- **Propose new event types.** The 30 standard types cover what we've seen so far. Healthcare, autonomous vehicles, and other domains will have governance actions we haven't imagined.
+- **Propose new event types.** The 31 standard types cover what we've seen so far. Healthcare, autonomous vehicles, and other domains will have governance actions we haven't imagined.
 - **Challenge the design.** If events should be signed, or the schema should be nested, or you need features beyond what's here — [open an issue](https://github.com/sandarb-ai/aigp/issues).
 - **Build your own implementation.** AIGP is Apache 2.0. Build a Go producer, a Rust consumer, a Spark connector. The more implementations, the more useful the format.
 
