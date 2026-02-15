@@ -29,7 +29,7 @@ AIGP is not a product feature — it's a proposal for a common language that any
 
 AI agents are being deployed across every industry. They access company data, make decisions, and interact with customers. Regulators, auditors, and security teams all need to answer the same fundamental question:
 
-> **"Prove to me that your AI agent accessed the right data, used the approved prompt, and didn't violate any policy."**
+> **"Prove your AI Agents used the approved Prompts, Tools, and Policies—every single time."**
 
 Today, every team answers this differently. Some grep through logs. Some build custom audit tables. Some don't track it at all. There is no shared format for what an AI governance proof should look like.
 
@@ -241,7 +241,7 @@ event = instrumentor.inject_success(
 
 ## Reference Implementation
 
-[Sandarb](https://sandarb.ai) is the first reference implementation of AIGP. It produces AIGP events across every integration path (A2A, MCP, REST API) and streams them through Kafka and ClickHouse for real-time governance analytics.
+[Sandarb](https://ui.sandarb.ai/) is the first reference implementation of AIGP. It produces AIGP events across every integration path (A2A, MCP, REST API) and streams them through Kafka and ClickHouse for real-time governance analytics.
 
 But AIGP doesn't require Sandarb. Any platform that produces events conforming to the schema is AIGP-compliant. The format is deliberately simple — a JSON object with well-defined fields — so adoption is a low barrier.
 
@@ -268,9 +268,9 @@ We don't have all the answers. AI governance is a new field, and the right forma
 | Example Events | [`examples/`](./examples/) |
 | Issues | [github.com/sandarb-ai/aigp/issues](https://github.com/sandarb-ai/aigp/issues) |
 | Discussions | [github.com/sandarb-ai/aigp/discussions](https://github.com/sandarb-ai/aigp/discussions) |
-| AIGP on the Web | [sandarb.ai/aigp](https://sandarb.ai/aigp) |
-| Sandarb Platform | [sandarb.ai](https://sandarb.ai) |
+| AIGP on the Web | [sandarb.ai/aigp](https://ui.sandarb.ai/aigp) |
+| Sandarb Platform | [sandarb.ai](https://ui.sandarb.ai/) |
 
 ---
 
-AI governance is too important to be owned by any single company. We started AIGP because we needed it for [Sandarb](https://sandarb.ai), and we're sharing it because we believe the industry needs a common language. This is a small step. We hope others will take the next ones with us.
+AI governance is too important to be owned by any single company. We started AIGP because we needed it for [Sandarb](https://ui.sandarb.ai/), and we're sharing it because we believe the industry needs a common language. This is a small step. We hope others will take the next ones with us.
