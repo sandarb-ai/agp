@@ -113,9 +113,9 @@ def compliance_store_callback(aigp_event: dict) -> None:
     Simulates sending AIGP events to a compliance store.
 
     In production, replace this with your actual event pipeline:
-    - Kafka topic for real-time streaming to compliance dashboards
-    - ClickHouse / BigQuery for long-term audit storage
-    - S3/GCS for immutable governance evidence (the AIGP SKOC pipeline)
+    - Message bus for real-time streaming to compliance dashboards
+    - OLAP store for long-term audit storage
+    - Object store for immutable governance evidence (the AIGP SKOC pipeline)
 
     Every AIGP event contains:
     - event_type: What happened (INJECT_SUCCESS, PROMPT_USED, POLICY_VIOLATION, etc.)
@@ -142,11 +142,11 @@ def main():
     # The AIGPInstrumentor is initialized once per agent. It provides:
     #   - get_resource_attributes(): AIGP identity attributes for the OTel Resource
     #   - inject_success(), prompt_used(), etc.: Governance event emitters
-    #   - event_callback: Where AIGP events are sent (Kafka, DB, S3, etc.)
+    #   - event_callback: Where AIGP events are sent (message bus, DB, object store, etc.)
     #
     # AIGP Resource attributes (aigp.agent.id, aigp.org.id, etc.) travel with
     # EVERY OTel span automatically — no per-span injection needed. This means
-    # any observability backend (Jaeger, Grafana, Datadog) can filter and group
+    # any OTel-compatible observability backend can filter and group
     # spans by agent identity without any custom instrumentation.
     #
     instrumentor = AIGPInstrumentor(
@@ -291,7 +291,7 @@ def main():
     #   - denial_reason: Human-readable explanation
     #
     # The OTel span is marked with an error status, making violations visible
-    # in observability dashboards (Grafana alerts, PagerDuty, etc.).
+    # in observability dashboards and alerting systems.
     #
     # The AIGP event goes to the compliance store with full context for
     # regulatory reporting and incident investigation.
@@ -367,7 +367,7 @@ def main():
     #
     # W3C tracestate allows multiple vendors to attach metadata to a trace.
     # AIGP injects a vendor key ("aigp=...") alongside existing entries
-    # (e.g., Datadog "dd=", Jaeger "rojo=").
+    # (e.g., other vendor entries like "dd=s:1", "rojo=t61rcWkgMzE").
     #
     # This provides lightweight governance signaling without Baggage overhead:
     #   tracestate: aigp=dc~confidential;pn~policy.trading-limits;pv~4,dd=s:1,rojo=t61rcWkgMzE
@@ -470,13 +470,13 @@ def main():
     # A single agent invocation produces THREE records, all correlated by
     # the same trace_id:
     #
-    #   1. AIGP event → Compliance store (Kafka → ClickHouse / S3)
+    #   1. AIGP event → AI Governance Store
     #      Full Merkle tree, all leaf hashes, complete cryptographic proof
     #
-    #   2. OTel span → Observability backend (Jaeger / Grafana / Datadog)
+    #   2. OTel span → Observability Backend
     #      governance_hash, leaf_count, agent identity, latency, errors
     #
-    #   3. OpenLineage RunEvent → Lineage backend (Marquez / DataHub)
+    #   3. OpenLineage RunEvent → Lineage Backend
     #      Governance summary as run facet + resources as InputDatasets
     #
     # OpenLineage integration is BIDIRECTIONAL:
@@ -601,7 +601,7 @@ def main():
     #     - resourceType, resourceName, leafHash
     #     - Detail: "each governed resource as an InputDataset"
     #
-    # Lineage backends (Marquez, DataHub, Atlan) render governed resources
+    # OpenLineage-compatible lineage backends render governed resources
     # as standard datasets in the lineage graph. The aigp_resource facet
     # provides AIGP-specific metadata for governance-aware UIs.
     #
@@ -640,17 +640,17 @@ def main():
     #
     # One query joins all three views:
     #   SELECT * FROM aigp_events WHERE trace_id = 'abc123...';       -- governance
-    #   -- Query Jaeger/Grafana by trace_id                           -- observability
-    #   -- Query Marquez/DataHub by run facet traceId                 -- lineage
+    #   -- Query observability backend by trace_id                     -- observability
+    #   -- Query lineage backend by run facet traceId                 -- lineage
     #
 
     # =====================================================================
     # Done
     # =====================================================================
     print("\n=== All scenarios complete ===")
-    print("AIGP events went to: compliance_store_callback (simulated Kafka)")
+    print("AIGP events went to: compliance_store_callback (simulated AI governance store)")
     print("OTel spans went to:  ConsoleSpanExporter (simulated observability backend)")
-    print("OpenLineage events:  built for Marquez/DataHub (simulated lineage backend)")
+    print("OpenLineage events:  built for any OpenLineage-compatible lineage backend")
     print("\nThree layers, one trace_id:")
     print("  AI Governance (AIGP)   — cryptographic proof, enforcement, audit trail")
     print("  Observability (OTel)   — agent latency, errors, trace topology")

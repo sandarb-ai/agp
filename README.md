@@ -60,7 +60,7 @@ def create_aigp_event(agent_id, policy_name, content, trace_id):
         "trace_id": trace_id,
     }
 
-# Emit the event to your log, Kafka, or any store
+# Emit the event to your log, message bus, or any store
 event = create_aigp_event("agent.trading-bot", "policy.trading-limits", "Max position: $10M", "trace-001")
 print(json.dumps(event, indent=2))
 ```
@@ -92,7 +92,7 @@ Optional but recommended: `policy_name`, `policy_version`, `prompt_name`, `promp
 1. **Open and protocol-agnostic.** Works with A2A, MCP, REST, gRPC, or anything else. The format doesn't assume a transport.
 2. **Tamper-evident by default.** Every event includes a `governance_hash`. If content changes between creation and storage, the hash won't match.
 3. **Traceable end-to-end.** Every event carries a `trace_id`. One query reconstructs the full chain: which agent, which prompt, which policy, what happened.
-4. **Flat and queryable.** Single wide event table — no joins for governance queries. Designed for OLAP engines like ClickHouse but works with any store.
+4. **Flat and queryable.** Single wide event table — no joins for governance queries. Designed for OLAP stores.
 5. **Extensible, not rigid.** The `metadata` object and `ext_`-prefixed fields allow domain-specific data without breaking the schema.
 
 ---
@@ -204,10 +204,10 @@ AIGP is the governance-proof semantic payload. OpenTelemetry is the transport an
 ```
 Governance Action
     |
-    +---> AIGP Event (JSON) ---> Compliance Store (Kafka -> ClickHouse)
+    +---> AIGP Event (JSON) ---> AI Governance Store
     |                            Purpose: Audit, regulatory, cryptographic proof
     |
-    +---> OTel Span Event -----> Observability Backend (Datadog/Grafana/Honeycomb)
+    +---> OTel Span Event -----> Observability Backend
                                  Purpose: Latency, error rates, trace visualization
 ```
 
@@ -228,7 +228,7 @@ from aigp_otel import AIGPInstrumentor
 instrumentor = AIGPInstrumentor(
     agent_id="agent.trading-bot-v2",
     org_id="org.finco",
-    event_callback=send_to_kafka,  # compliance store
+    event_callback=send_to_store,  # your AI governance store
 )
 
 # Within an OTel span — dual-emit happens automatically
@@ -238,7 +238,7 @@ event = instrumentor.inject_success(
     content="Max position: $10M...",
     data_classification="confidential",
 )
-# -> AIGP event sent to Kafka (compliance)
+# -> AIGP event sent to AI governance store (compliance)
 # -> OTel span event with aigp.* attributes (observability)
 ```
 
@@ -253,8 +253,8 @@ AIGP connects AI governance proof to data lineage via OpenLineage custom facets.
 | Layer | Standard | What It Shows | Backend |
 |---|---|---|---|
 | **AI Governance** | AIGP | Cryptographic proof, enforcement, audit trail, AI governance evidence | AIGP is the standard. Where you store the proof is your business. |
-| **Observability** | OTel | Agent latency, errors, trace topology, AI governance attributes | Datadog / Grafana |
-| **Lineage** | OpenLineage | What data flowed where, governed by what, produced what | Marquez / DataHub |
+| **Observability** | OTel | Agent latency, errors, trace topology, AI governance attributes | Any OTel-compatible backend |
+| **Lineage** | OpenLineage | What data flowed where, governed by what, produced what | Any OpenLineage-compatible backend |
 
 Three open standards. Three orthogonal concerns. One `trace_id`.
 
@@ -271,7 +271,7 @@ Three open standards. Three orthogonal concerns. One `trace_id`.
 
 ## Reference Implementation
 
-[Sandarb](https://ui.sandarb.ai/) is the first reference implementation of AIGP. It produces AIGP events across every integration path (A2A, MCP, REST API) and streams them through Kafka and ClickHouse for real-time governance analytics.
+[Sandarb](https://ui.sandarb.ai/) is the first reference implementation of AIGP. It produces AIGP events across every integration path (A2A, MCP, REST API) and streams them to an OLAP store for real-time governance analytics.
 
 But AIGP doesn't require Sandarb. Any platform that produces events conforming to the schema is AIGP-compliant. The format is deliberately simple — a JSON object with well-defined fields — so adoption is a low barrier.
 

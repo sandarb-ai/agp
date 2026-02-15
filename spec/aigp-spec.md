@@ -746,7 +746,7 @@ Example:
 traceparent: 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01
 ```
 
-This reconstruction enables AIGP events to be re-injected into OTel trace visualization tools (Jaeger, Grafana Tempo, Datadog APM) without data loss.
+This reconstruction enables AIGP events to be re-injected into any OTel-compatible trace visualization tool without data loss.
 
 ### 11.5 AIGP Semantic Attributes for OpenTelemetry
 

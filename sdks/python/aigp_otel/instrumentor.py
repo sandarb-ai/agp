@@ -76,11 +76,11 @@ class AIGPInstrumentor:
             tracer_name: OTel tracer name for AIGP spans.
             event_callback: Optional callback invoked with each AIGP event dict.
                            Use this to send AIGP events to your AI governance store
-                           (Kafka, HTTP endpoint, etc.).
+                           (message bus, HTTP endpoint, etc.).
             openlineage_callback: Optional callback invoked with an
                            AIGPGovernanceRunFacet dict for each governance event.
                            Use this to send governance facets to your lineage
-                           backend (Marquez, DataHub, etc.).  Emit at most one
+                           backend (any OpenLineage-compatible store).  Emit at most one
                            OpenLineage RunEvent per governance session/task.
         """
         self.agent_id = agent_id

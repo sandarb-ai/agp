@@ -125,7 +125,8 @@ exporters:
 
   # -------------------------------------------------------
   # Compliance: AIGP governance store (AIGP-relevant spans only)
-  # Option A: Kafka for high-throughput compliance pipelines
+  # Example: Kafka exporter for high-throughput compliance pipelines
+  # Replace with your message bus or store of choice
   # -------------------------------------------------------
   kafka/aigp_compliance:
     brokers:

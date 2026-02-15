@@ -231,10 +231,10 @@ Every governance action produces two outputs:
 ```
 Governance Action
     |
-    +---> AIGP Event (JSON) ---> Compliance Store (Kafka -> ClickHouse)
+    +---> AIGP Event (JSON) ---> AI Governance Store
     |                            Purpose: Audit, regulatory, cryptographic proof
     |
-    +---> OTel Span Event -----> Observability Backend (Datadog/Grafana/Honeycomb)
+    +---> OTel Span Event -----> Observability Backend
                                  Purpose: Latency, error rates, trace visualization
 ```
 
@@ -253,7 +253,7 @@ The OTel Collector can bridge OTel telemetry and AIGP events without modifying a
 ```
 Receivers            Processors                  Exporters
 -----------    -------------------------    ----------------------
-OTLP (gRPC) -> aigp-governance-processor -> AIGP store (Kafka)
+OTLP (gRPC) -> aigp-governance-processor -> AI governance store
                                          -> OTel backend (OTLP)
 ```
 

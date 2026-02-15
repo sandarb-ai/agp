@@ -125,7 +125,7 @@ SELECT * FROM aigp_events WHERE trace_id = '4bf92f35...';
 -- (query your observability backend by trace_id)
 
 -- OpenLineage: lineage view
--- (query Marquez/DataHub by run facet traceId)
+-- (query lineage backend by run facet traceId)
 ```
 
 ---

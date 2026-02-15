@@ -189,7 +189,7 @@ def build_openlineage_run_event(
     Build a complete OpenLineage RunEvent with AIGP governance facets.
 
     This convenience function creates a full RunEvent dict that can be
-    sent to Marquez, DataHub, or any OpenLineage-compatible backend.
+    sent to any OpenLineage-compatible lineage backend.
 
     Governed resources become OpenLineage InputDatasets with the
     ``aigp_resource`` input facet.

@@ -33,7 +33,7 @@ instrumentor = AIGPInstrumentor(
     agent_id="agent.trading-bot-v2",
     agent_name="Trading Bot",
     org_id="org.finco",
-    event_callback=send_to_kafka,  # your compliance store
+    event_callback=send_to_store,  # your AI governance store
 )
 
 resource = Resource.create({
@@ -52,7 +52,7 @@ with tracer.start_as_current_span("invoke_agent") as span:
         content="Max position: $10M...",
         data_classification="confidential",
     )
-    # -> AIGP event sent to Kafka (compliance)
+    # -> AIGP event sent to AI governance store (compliance)
     # -> OTel span event with aigp.* attributes (observability)
 ```
 
@@ -65,9 +65,9 @@ Every call produces two outputs automatically:
 ```
 instrumentor.inject_success(...)
     |
-    +---> AIGP Event (JSON) ---> event_callback (Kafka/ClickHouse)
+    +---> AIGP Event (JSON) ---> event_callback (AI governance store)
     |
-    +---> OTel Span Event -----> OTel backend (Datadog/Grafana)
+    +---> OTel Span Event -----> OTel-compatible observability backend
 ```
 
 ### Supported Event Types
@@ -213,7 +213,7 @@ ol_event = build_openlineage_run_event(
     job_namespace="finco.scoring",
     job_name="credit-scorer-v2.invoke",
 )
-# Send to Marquez, DataHub, or any OpenLineage backend
+# Send to any OpenLineage-compatible lineage backend
 ```
 
 ## Modules
