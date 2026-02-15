@@ -169,13 +169,10 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 : A governed template or instruction set used to direct an agent's behavior. Prompts are versioned and subject to approval workflows.
 
 **Context**
-: A general-purpose pre-execution resource representing environment configuration, runtime state, or any other input the agent was operating on. Context resources are hashed as Merkle leaves for tamper-proof evidence.
+: A general-purpose, agent-defined pre-execution resource. AIGP defines `"context"` as a valid governed resource type but does not prescribe its contents — each AI agent or framework decides what context means for its use case (environment configuration, runtime state, session parameters, etc.). AIGP hashes the content and includes it in the Merkle tree governance proof. The semantics of context are intentionally left to the agent implementation.
 
 **Lineage**
-: A data lineage snapshot capturing upstream dataset provenance, DAG state, or OpenLineage graph context. Lineage resources provide cryptographic evidence of what data lineage the agent was operating on at the time of the governance action.
-
-**Context**
-: A governed snapshot of pre-execution context provided to an agent before invocation. A context resource captures the state of upstream data lineage, environment configuration, or any other input that the agent was operating on. Context resources are versioned by their content hash and participate in the Merkle tree governance hash alongside policies, prompts, and tools.
+: A data lineage snapshot capturing upstream dataset provenance, DAG state, or OpenLineage graph context. Unlike `"context"`, `"lineage"` has a specific meaning within AIGP: it represents a pre-execution snapshot of the data lineage that the agent was operating on, enabling bidirectional sync between AIGP governance proof and OpenLineage data lineage.
 
 **Trace**
 : A correlation identifier (`trace_id`) that links all AIGP events arising from a single user request, agent execution, or governance workflow. A single trace enables end-to-end reconstruction of the governance path.
@@ -599,7 +596,7 @@ When `hash_type` is `"merkle-sha256"`, the event SHOULD include a top-level `gov
 {
   "governance_merkle_tree": {
     "algorithm": "sha256",
-    "leaf_count": 3,
+    "leaf_count": 5,
     "leaves": [
       {
         "resource_type": "policy",
@@ -615,6 +612,16 @@ When `hash_type` is `"merkle-sha256"`, the event SHOULD include a top-level `gov
         "resource_type": "tool",
         "resource_name": "tool.order-lookup",
         "hash": "9c0d1e2f..."
+      },
+      {
+        "resource_type": "context",
+        "resource_name": "context.env-config",
+        "hash": "b3c4d5e6..."
+      },
+      {
+        "resource_type": "lineage",
+        "resource_name": "lineage.upstream-orders",
+        "hash": "d7e8f9a0..."
       }
     ]
   }
@@ -829,9 +836,9 @@ AIGP events capture AI governance actions. OpenLineage events capture data linea
 
 Two resource types enable pre-execution inputs to participate in the Merkle tree governance hash:
 
-**Context resources** (`"context"`) capture general-purpose pre-execution state: environment configuration, runtime parameters, or any agent-specific input. Context resources SHOULD use the AGRN format `context.<kebab-name>` (e.g., `context.env-config`, `context.runtime-params`).
+**Context resources** (`"context"`) are general-purpose and agent-defined. AIGP provides the `"context"` resource type as a governed extension point — the specification does not prescribe what goes inside a context resource. Each AI agent or framework determines the semantics: environment configuration, runtime parameters, session state, model hyperparameters, or any other pre-execution input relevant to that agent's governance needs. AIGP hashes the content into the Merkle tree and provides the cryptographic proof; the agent owns the meaning. Context resources SHOULD use the AGRN format `context.<kebab-name>` (e.g., `context.env-config`, `context.runtime-params`).
 
-**Lineage resources** (`"lineage"`) capture data lineage snapshots: upstream dataset provenance, DAG state, or OpenLineage graph context. Lineage resources SHOULD use the AGRN format `lineage.<kebab-name>` (e.g., `lineage.upstream-orders`, `lineage.credit-scores`). The content of a lineage resource is typically a JSON-serialized snapshot of the upstream data lineage at the time of the governance action, providing tamper-proof evidence of what data context the agent was operating on.
+**Lineage resources** (`"lineage"`) have a specific, AIGP-defined meaning: they capture data lineage snapshots for bidirectional sync with OpenLineage. A lineage resource represents a pre-execution snapshot of upstream dataset provenance, DAG state, or OpenLineage graph context. Lineage resources SHOULD use the AGRN format `lineage.<kebab-name>` (e.g., `lineage.upstream-orders`, `lineage.credit-scores`). The content of a lineage resource is typically a JSON-serialized snapshot of the upstream data lineage at the time of the governance action, providing tamper-proof evidence of what data context the agent was operating on.
 
 The content of both resource types SHOULD be JSON-serialized. Implementations MUST compute the leaf hash over this serialized content per Section 8.8.2.
 

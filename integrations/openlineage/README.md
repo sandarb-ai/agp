@@ -51,7 +51,7 @@ ol_event = build_openlineage_run_event(
 
 1. **Emission Granularity:** Emit one OpenLineage RunEvent per governance session/task (using `trace_id` as `runId`), not per agent step.
 2. **Dataset Abstraction:** Governed resources appear as generic datasets in standard lineage UIs. Use `aigp_resource.resourceType` for native rendering.
-3. **Active vs. Passive:** OpenLineage is passive (eventually consistent). Enforcement uses the AIGP + OTel path. Pre-execution data lineage is snapshotted and hashed as a `"lineage"` resource in the Merkle tree. General pre-execution context (env config, runtime params) uses `"context"`.
+3. **Active vs. Passive:** OpenLineage is passive (eventually consistent). Enforcement uses the AIGP + OTel path. Pre-execution data lineage is snapshotted and hashed as a `"lineage"` resource (AIGP-defined, specific meaning). General pre-execution context uses `"context"` (agent-defined — AIGP hashes it but doesn't prescribe what goes inside).
 
 ## Related Documentation
 

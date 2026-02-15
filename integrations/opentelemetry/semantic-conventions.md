@@ -103,6 +103,8 @@ When a single governance operation involves multiple policies, prompts, or tools
 | `aigp.prompts.names` | String[] | All active prompts in this operation | `["prompt.customer-support-v3", "prompt.escalation-v1"]` |
 | `aigp.prompts.versions` | Int[] | Corresponding versions (positional) | `[3, 1]` |
 | `aigp.tools.names` | String[] | Governed tools invoked | `["tool.web-search", "tool.database-query"]` |
+| `aigp.contexts.names` | String[] | Governed context resources | `["context.env-config", "context.runtime-params"]` |
+| `aigp.lineages.names` | String[] | Governed lineage resources | `["lineage.upstream-orders", "lineage.credit-scores"]` |
 
 When only a single policy or prompt is involved, implementations MAY use the singular form (`aigp.policy.name`) instead of the array form.
 

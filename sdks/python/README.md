@@ -107,7 +107,7 @@ aigp.policies.versions = [4, 2]
 
 ### Merkle Tree Governance Hash
 
-When an agent is governed by multiple resources (policies, prompts, tools), compute a Merkle tree for per-resource verification:
+When an agent is governed by multiple resources (policies, prompts, tools, contexts, lineage), compute a Merkle tree for per-resource verification:
 
 ```python
 from aigp_otel.events import compute_merkle_governance_hash
@@ -116,14 +116,16 @@ resources = [
     ("policy", "policy.refund-limits", "Refund max: $500..."),
     ("prompt", "prompt.customer-support-v3", "You are a helpful..."),
     ("tool", "tool.order-lookup", '{"name": "order-lookup", "scope": "read"}'),
+    ("context", "context.env-config", '{"env": "production", "region": "us-east-1"}'),
+    ("lineage", "lineage.upstream-orders", '{"datasets": ["orders", "customers"]}'),
 ]
 
 root_hash, merkle_tree = compute_merkle_governance_hash(resources)
 # root_hash: "a3f2b8..." (Merkle root, used as governance_hash)
-# merkle_tree: {"algorithm": "sha256", "leaf_count": 3, "leaves": [...]}
+# merkle_tree: {"algorithm": "sha256", "leaf_count": 5, "leaves": [...]}
 ```
 
-Or use the instrumentor for dual-emit with Merkle:
+Or use the instrumentor for triple-emit with Merkle:
 
 ```python
 event = instrumentor.multi_resource_governance_proof(
@@ -131,6 +133,8 @@ event = instrumentor.multi_resource_governance_proof(
         ("policy", "policy.refund-limits", "Refund max: $500..."),
         ("prompt", "prompt.customer-support-v3", "You are a helpful..."),
         ("tool", "tool.order-lookup", '{"name": "order-lookup"}'),
+        ("context", "context.env-config", '{"env": "production"}'),
+        ("lineage", "lineage.upstream-orders", '{"datasets": ["orders"]}'),
     ],
     data_classification="confidential",
 )

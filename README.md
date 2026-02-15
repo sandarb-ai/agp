@@ -138,6 +138,8 @@ Every governed resource follows a typed, kebab-case naming convention called **A
 | Agent | `agent.<kebab-name>` | `agent.trading-bot-v2` |
 | Policy | `policy.<kebab-name>` | `policy.eu-refund-policy` |
 | Prompt | `prompt.<kebab-name>` | `prompt.customer-support-v3` |
+| Context | `context.<kebab-name>` | `context.env-config` |
+| Lineage | `lineage.<kebab-name>` | `lineage.upstream-orders` |
 | Organization | `org.<kebab-name>` | `org.finco` |
 
 **Rules:** Lowercase only. Letters, numbers, and hyphens. No underscores, no double hyphens, no trailing hyphens.

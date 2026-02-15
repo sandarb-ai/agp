@@ -62,8 +62,8 @@ The run facet provides the summary (hash, enforcement result, classification). T
 
 Two resource types enable pre-execution inputs to participate in the Merkle tree:
 
-- **`"context"`** — general pre-execution state: environment configuration, runtime parameters, agent-specific inputs.
-- **`"lineage"`** — data lineage snapshots: upstream dataset provenance, DAG state, OpenLineage graph context.
+- **`"context"`** — agent-defined, general-purpose. AIGP does not prescribe what goes inside — each AI agent or framework determines the semantics (env config, runtime params, session state, etc.). AIGP hashes it; the agent owns the meaning.
+- **`"lineage"`** — AIGP-defined, specific meaning. Data lineage snapshots: upstream dataset provenance, DAG state, OpenLineage graph context. Used for bidirectional sync between AIGP and OpenLineage.
 
 Before an agent runs, you can:
 
