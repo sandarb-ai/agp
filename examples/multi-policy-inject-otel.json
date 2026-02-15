@@ -1,0 +1,53 @@
+{
+  "event_id": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+  "event_type": "INJECT_SUCCESS",
+  "event_category": "inject",
+  "event_time": "2026-02-15T11:15:00.789Z",
+
+  "agent_id": "agent.trading-bot-v2",
+  "agent_name": "Trading Bot",
+  "org_id": "org.finco",
+  "org_name": "FinCo",
+
+  "policy_id": "pol-001",
+  "policy_name": "policy.trading-limits",
+  "policy_version": 4,
+
+  "prompt_id": "",
+  "prompt_name": "",
+  "prompt_version": 0,
+
+  "governance_hash": "b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f2a1b0c9d8e7f6a5b4c3",
+  "hash_type": "sha256",
+  "trace_id": "7af83b2c4d5e6f7890abcdef12345678",
+  "span_id": "1a2b3c4d5e6f7a8b",
+  "parent_span_id": "f0e1d2c3b4a59687",
+  "trace_flags": "01",
+  "data_classification": "confidential",
+
+  "template_rendered": true,
+
+  "denial_reason": "",
+  "violation_type": "",
+  "severity": "",
+
+  "source_ip": "10.0.1.42",
+  "request_method": "GET",
+  "request_path": "/api/policies/trading-limits/content",
+
+  "ingested_at": "2026-02-15T11:15:01.234Z",
+
+  "metadata": {
+    "regulatory_hooks": ["FINRA", "SEC", "CFTC"],
+    "delivery_latency_ms": 8,
+    "all_policies": [
+      {"name": "policy.trading-limits", "version": 4},
+      {"name": "policy.risk-controls", "version": 2}
+    ],
+    "otel_attributes": {
+      "aigp.policies.names": ["policy.trading-limits", "policy.risk-controls"],
+      "aigp.policies.versions": [4, 2]
+    },
+    "w3c_traceparent": "00-7af83b2c4d5e6f7890abcdef12345678-1a2b3c4d5e6f7a8b-01"
+  }
+}

@@ -1,6 +1,6 @@
 # AI Governance Proof (AIGP) Specification
 
-**Version:** 0.2.0 (Draft)
+**Version:** 0.3.0 (Draft)
 
 **Status:** Draft
 
@@ -59,6 +59,13 @@ Future versions of this specification may introduce breaking changes. Implemente
 - [9. Data Classification Levels](#9-data-classification-levels)
 - [10. Severity Levels](#10-severity-levels)
 - [11. Trace ID Conventions](#11-trace-id-conventions)
+  - [11.1 Accepted Formats](#111-accepted-formats)
+  - [11.2 Consistency Requirements](#112-consistency-requirements)
+  - [11.3 Generation](#113-generation)
+  - [11.4 OpenTelemetry Span Correlation](#114-opentelemetry-span-correlation)
+  - [11.5 AIGP Semantic Attributes for OpenTelemetry](#115-aigp-semantic-attributes-for-opentelemetry)
+  - [11.6 Baggage Propagation](#116-baggage-propagation)
+  - [11.7 W3C `tracestate` Vendor Key](#117-w3c-tracestate-vendor-key)
 - [12. Conformance Levels](#12-conformance-levels)
 - [13. Transport Bindings](#13-transport-bindings)
   - [13.1 HTTP](#131-http)
@@ -232,13 +239,16 @@ The following fields identify the governed policy or prompt involved in the gove
 
 ### 5.4 Governance Proof Fields
 
-The following fields relate to the cryptographic proof and traceability of the governance action. The `governance_hash` and `trace_id` fields are required (see Section 5.1). The remaining fields in this group are OPTIONAL.
+The following fields relate to the cryptographic proof and traceability of the governance action. The `governance_hash` and `trace_id` fields are required (see Section 5.1). The remaining fields in this group are OPTIONAL unless noted.
 
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `governance_hash` | String | *(required)* | See Section 5.1 and Section 8. |
 | `hash_type` | String | `"sha256"` | The hash algorithm used to compute `governance_hash`. MUST be a recognized algorithm identifier. Default is `"sha256"`. Implementations MAY support `"sha384"` or `"sha512"` for future algorithm migration. |
 | `trace_id` | String | *(required)* | See Section 5.1 and Section 11. |
+| `span_id` | String | `""` | The OpenTelemetry span ID identifying the specific operation that produced this governance event. When present, MUST be a 16-character lowercase hexadecimal string conforming to the W3C Trace Context `parent-id` format. See Section 11.4. |
+| `parent_span_id` | String | `""` | The OpenTelemetry parent span ID. When present, MUST be a 16-character lowercase hexadecimal string. Enables AIGP events to participate in OTel span trees, connecting governance actions to the calling operation. See Section 11.4. |
+| `trace_flags` | String | `""` | W3C Trace Context trace-flags. When present, MUST be a 2-character lowercase hexadecimal string. `"01"` indicates the trace is sampled. Preserves OTel sampling decisions in governance records. See Section 11.4. |
 | `data_classification` | String | `""` | The classification level of the data involved in this governance action. When present, MUST be one of the values defined in Section 9. An empty string indicates that classification is not specified. |
 
 ### 5.5 Denial and Policy Fields
@@ -580,6 +590,124 @@ Implementations SHOULD use one of the following trace ID formats:
 - Implementations MUST generate trace IDs using a method that provides sufficient uniqueness to avoid collisions in practice (e.g., UUID v4 or cryptographically random 128-bit values).
 - Implementations MUST NOT use sequential, predictable, or low-entropy values as trace IDs.
 
+### 11.4 OpenTelemetry Span Correlation
+
+AIGP events capture *governance actions*. OpenTelemetry spans capture *operations*. When both systems are present, they SHOULD be correlated so that a governance proof can be linked to the specific operation that produced it.
+
+#### 11.4.1 Span ID and Parent Span ID
+
+The `span_id` field is OPTIONAL. When present, it MUST be a 16-character lowercase hexadecimal string conforming to the W3C Trace Context `parent-id` format (64-bit, 8 bytes).
+
+- Implementations that integrate with OpenTelemetry SHOULD populate `span_id` with the active span's ID at the time the governance event is produced.
+- Implementations SHOULD populate `parent_span_id` with the parent span's ID when the governance action occurs within a nested span.
+- When `span_id` is present, `trace_id` MUST use the 32-character lowercase hexadecimal format (W3C Trace Context `trace-id`).
+
+The combination of `trace_id` + `span_id` uniquely identifies the exact position in a distributed trace where the governance action occurred. This enables auditors to correlate governance proof with operational latency, error rates, and call graphs.
+
+#### 11.4.2 Trace Flags
+
+The `trace_flags` field is OPTIONAL. When present, it MUST be a 2-character lowercase hexadecimal string conforming to the W3C Trace Context `trace-flags` format.
+
+- `"01"` indicates the trace is sampled (the span was recorded by the tracing backend).
+- `"00"` indicates the trace is not sampled.
+- Implementations SHOULD preserve the OTel sampling decision in the `trace_flags` field so that governance events can be correlated with sampled traces.
+
+#### 11.4.3 Reconstructing the W3C `traceparent`
+
+When `trace_id`, `span_id`, and `trace_flags` are all present, the W3C `traceparent` header can be reconstructed:
+
+```
+traceparent: 00-{trace_id}-{span_id}-{trace_flags}
+```
+
+Example:
+
+```
+traceparent: 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01
+```
+
+This reconstruction enables AIGP events to be re-injected into OTel trace visualization tools (Jaeger, Grafana Tempo, Datadog APM) without data loss.
+
+### 11.5 AIGP Semantic Attributes for OpenTelemetry
+
+When AIGP events are emitted alongside OpenTelemetry spans, implementations SHOULD attach governance metadata as OTel span attributes using the `aigp.*` namespace. This enables OTel backends to query governance data natively.
+
+The following table defines the mapping between AIGP event fields and OTel span attributes:
+
+| OTel Attribute | AIGP Source Field | OTel Attribute Type | When to Set |
+|---|---|---|---|
+| `aigp.event.id` | `event_id` | String | Every governance span event |
+| `aigp.event.type` | `event_type` | String | Every governance span event |
+| `aigp.agent.id` | `agent_id` | String | Resource attribute (constant per process) |
+| `aigp.agent.name` | `agent_name` | String | Resource attribute (constant per process) |
+| `aigp.org.id` | `org_id` | String | Resource attribute (constant per process) |
+| `aigp.policy.name` | `policy_name` | String | Span attribute (per-operation) |
+| `aigp.policy.version` | `policy_version` | Int | Span attribute (per-operation) |
+| `aigp.prompt.name` | `prompt_name` | String | Span attribute (per-operation) |
+| `aigp.prompt.version` | `prompt_version` | Int | Span attribute (per-operation) |
+| `aigp.governance.hash` | `governance_hash` | String | Span attribute (per-operation) |
+| `aigp.governance.hash_type` | `hash_type` | String | Span attribute (per-operation) |
+| `aigp.data.classification` | `data_classification` | String | Span attribute (per-operation) |
+| `aigp.enforcement.result` | *(derived)* | String | `"allowed"` or `"denied"` based on event type |
+| `aigp.severity` | `severity` | String | Span attribute (denial/violation events) |
+| `aigp.violation.type` | `violation_type` | String | Span attribute (violation events) |
+
+**Attribute type guidance:**
+
+- **Resource attributes** (`aigp.agent.id`, `aigp.agent.name`, `aigp.org.id`) represent identity that is constant for the lifetime of the agent process. These SHOULD be set once on the OTel Resource and automatically propagated to all spans.
+- **Span attributes** (`aigp.policy.name`, `aigp.governance.hash`, `aigp.data.classification`) are specific to a single governance operation and SHOULD be set on the span that performs the governance action.
+- **Span events** are the primary mechanism for attaching AIGP governance records to OTel spans. Each AIGP event SHOULD be emitted as an OTel span event with the attributes above.
+
+### 11.6 Baggage Propagation
+
+When an agent invokes another agent (agent-to-agent calls), governance context SHOULD travel with the request using OpenTelemetry Baggage.
+
+#### 11.6.1 Baggage Items
+
+The following AIGP fields SHOULD be propagated as OTel Baggage items during agent-to-agent calls:
+
+| Baggage Key | AIGP Source | Purpose |
+|---|---|---|
+| `aigp.policy.name` | `policy_name` | The active governed policy |
+| `aigp.data.classification` | `data_classification` | Sensitivity level of governed data |
+| `aigp.org.id` | `org_id` | Organizational affiliation |
+
+#### 11.6.2 Baggage Rules
+
+- Receiving agents SHOULD extract AIGP Baggage items and include them in any AIGP events they produce.
+- Sensitive governance content (`governance_hash`, `denial_reason`, raw policy content) MUST NOT be placed in Baggage, as Baggage values are transmitted in HTTP headers and may be visible to intermediaries.
+- Implementations SHOULD use the OTel `BaggageSpanProcessor` to automatically promote Baggage items into span attributes for observability backends.
+
+### 11.7 W3C `tracestate` Vendor Key
+
+Implementations MAY propagate lightweight governance context in the W3C `tracestate` header using the vendor key `aigp`.
+
+#### 11.7.1 Format
+
+```
+tracestate: aigp=cls:{classification};pol:{policy_name};ver:{policy_version}
+```
+
+Where:
+
+- `cls` is the abbreviated `data_classification` value (`pub`, `int`, `con`, `res`).
+- `pol` is the `policy_name` in AGRN format (e.g., `policy.trading-limits`).
+- `ver` is the `policy_version` integer.
+
+Semicolons separate key-value pairs within the `aigp` vendor entry. Keys and values MUST NOT contain commas, equals signs, or semicolons (these are reserved by the W3C `tracestate` specification).
+
+#### 11.7.2 Example
+
+```
+tracestate: aigp=cls:con;pol:policy.trading-limits;ver:4,dd=s:1
+```
+
+#### 11.7.3 Behavior
+
+- The `tracestate` vendor key is OPTIONAL. Implementations that do not use it MUST NOT remove or modify the `aigp` vendor entry if it is already present in an incoming `tracestate` header.
+- Unlike Baggage, `tracestate` survives through proxies, load balancers, and service meshes that do not understand OTel Baggage. It provides a minimum viable governance context that travels with every traced request.
+- Implementations MUST NOT place sensitive data (hashes, denial reasons, raw content) in `tracestate` values.
+
 ---
 
 ## 12. Conformance Levels
@@ -829,6 +957,9 @@ The following is a fully annotated AIGP event representing a successful policy i
 
 | Version | Date | Changes |
 |---|---|---|
+| 0.3.0 | 2026-02-15 | OpenTelemetry integration. Adds `span_id`, `parent_span_id`, `trace_flags` fields. Adds spec sections 11.4 (OTel Span Correlation), 11.5 (AIGP Semantic Attributes), 11.6 (Baggage Propagation), 11.7 (W3C tracestate Vendor Key). Companion semantic conventions document and reference OTel Collector configuration. |
+| 0.2.1 | 2026-02-09 | Adds `policy_version` and `prompt_version` fields. Removes `version_id` and `version_number`. |
+| 0.2.0 | 2026-02-08 | Formal specification with RFC 2119 language. Security and privacy sections. Conformance levels. Transport bindings. AGRN naming. |
 | 0.1.0 | 2025-01-15 | Initial draft. Defines AIGP event structure, 16 standard event types, AGRN naming conventions, governance hash computation, data classification and severity levels, trace ID conventions, and three conformance levels. |
 
 ---
@@ -847,5 +978,8 @@ The following is a fully annotated AIGP event representing a successful policy i
 
 - **[CloudEvents]** Cloud Native Computing Foundation, "CloudEvents - Version 1.0.2", https://cloudevents.io/
 - **[OpenTelemetry]** OpenTelemetry Specification, "Semantic Conventions", https://opentelemetry.io/docs/specs/semconv/
+- **[OpenTelemetry-GenAI]** OpenTelemetry Specification, "Semantic Conventions for Generative AI", https://opentelemetry.io/docs/specs/semconv/gen-ai/
+- **[W3C-TraceContext]** W3C, "Trace Context", W3C Recommendation, https://www.w3.org/TR/trace-context/
+- **[OpenTelemetry-Baggage]** OpenTelemetry Specification, "Baggage", https://opentelemetry.io/docs/concepts/signals/baggage/
 - **[FIPS-180-4]** National Institute of Standards and Technology, "Secure Hash Standard (SHS)", FIPS PUB 180-4, August 2015. https://csrc.nist.gov/publications/detail/fips/180/4/final
 - **[Sandarb]** Sandarb -- Reference implementation of the AIGP specification. https://sandarb.ai

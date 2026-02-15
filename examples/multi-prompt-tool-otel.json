@@ -1,0 +1,65 @@
+{
+  "event_id": "d5e6f7a8-b9c0-1234-efab-567890123456",
+  "event_type": "GOVERNANCE_PROOF",
+  "event_category": "governance-proof",
+  "event_time": "2026-02-15T12:00:00.123Z",
+
+  "agent_id": "agent.customer-support-v3",
+  "agent_name": "Customer Support Agent",
+  "org_id": "org.summit-retail",
+  "org_name": "Summit Retail",
+
+  "policy_id": "pol-010",
+  "policy_name": "policy.refund-limits",
+  "policy_version": 3,
+
+  "prompt_id": "pmt-042",
+  "prompt_name": "prompt.customer-support-v3",
+  "prompt_version": 3,
+
+  "governance_hash": "c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6",
+  "hash_type": "sha256",
+  "trace_id": "8bc94a3d5e6f7a8b90cdef1234567890",
+  "span_id": "2b3c4d5e6f7a8b9c",
+  "parent_span_id": "",
+  "trace_flags": "01",
+  "data_classification": "confidential",
+
+  "template_rendered": true,
+
+  "denial_reason": "",
+  "violation_type": "",
+  "severity": "",
+
+  "source_ip": "10.20.5.55",
+  "request_method": "POST",
+  "request_path": "/api/agents/customer-support-v3/invoke",
+
+  "ingested_at": "2026-02-15T12:00:00.567Z",
+
+  "metadata": {
+    "all_policies": [
+      {"name": "policy.refund-limits", "version": 3},
+      {"name": "policy.customer-privacy", "version": 5},
+      {"name": "policy.escalation-rules", "version": 1}
+    ],
+    "all_prompts": [
+      {"name": "prompt.customer-support-v3", "version": 3},
+      {"name": "prompt.escalation-handler-v1", "version": 1}
+    ],
+    "all_tools": [
+      {"name": "tool.order-lookup", "scope": "read"},
+      {"name": "tool.refund-processor", "scope": "write"},
+      {"name": "tool.customer-db", "scope": "read"}
+    ],
+    "otel_attributes": {
+      "aigp.policies.names": ["policy.refund-limits", "policy.customer-privacy", "policy.escalation-rules"],
+      "aigp.policies.versions": [3, 5, 1],
+      "aigp.prompts.names": ["prompt.customer-support-v3", "prompt.escalation-handler-v1"],
+      "aigp.prompts.versions": [3, 1],
+      "aigp.tools.names": ["tool.order-lookup", "tool.refund-processor", "tool.customer-db"]
+    },
+    "regulatory_hooks": ["CCPA", "PCI-DSS"],
+    "w3c_traceparent": "00-8bc94a3d5e6f7a8b90cdef1234567890-2b3c4d5e6f7a8b9c-01"
+  }
+}

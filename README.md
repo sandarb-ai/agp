@@ -1,7 +1,7 @@
 # AI Governance Proof (AIGP)&trade;
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
-[![Spec](https://img.shields.io/badge/Spec-v0.2.1-violet.svg)](./spec/aigp-spec.md)
+[![Spec](https://img.shields.io/badge/Spec-v0.3.0-violet.svg)](./spec/aigp-spec.md)
 [![Schema](https://img.shields.io/badge/JSON_Schema-valid-green.svg)](./schema/aigp-event.schema.json)
 
 **An open specification for capturing cryptographic proof of every AI agent governance action.**
@@ -19,6 +19,7 @@ AIGP is not a product feature — it's a proposal for a common language that any
 - [Use Cases](#use-cases)
 - [Instrumentation Conventions](#instrumentation-conventions)
 - [Example Event](#example-event)
+- [OpenTelemetry Integration](#opentelemetry-integration)
 - [Reference Implementation](#reference-implementation)
 - [Contributing](#contributing)
 
@@ -187,6 +188,57 @@ More examples: [`examples/`](./examples/) — including healthcare (HIPAA), fina
 
 ---
 
+## OpenTelemetry Integration
+
+AIGP is the governance-proof semantic payload. OpenTelemetry is the transport and correlation layer. They compose — they don't compete.
+
+### Architecture
+
+```
+Governance Action
+    |
+    +---> AIGP Event (JSON) ---> Compliance Store (Kafka -> ClickHouse)
+    |                            Purpose: Audit, regulatory, cryptographic proof
+    |
+    +---> OTel Span Event -----> Observability Backend (Datadog/Grafana/Honeycomb)
+                                 Purpose: Latency, error rates, trace visualization
+```
+
+### What's included
+
+| Resource | Description |
+|----------|-------------|
+| [Semantic Conventions](./integrations/opentelemetry/semantic-conventions.md) | `aigp.*` attribute namespace, Resource vs Span vs Event mappings |
+| [Collector Config](./integrations/opentelemetry/collector-config.yaml) | Reference OTel Collector with dual-pipeline (observability + compliance) |
+| [Python SDK](./sdks/python/) | `aigp-otel` bridge library with dual-emit, Baggage, and tracestate support |
+| [OTel Example Events](./examples/inject-success-otel.json) | AIGP events with `span_id`, `parent_span_id`, `trace_flags` |
+
+### Quick example (Python)
+
+```python
+from aigp_otel import AIGPInstrumentor
+
+instrumentor = AIGPInstrumentor(
+    agent_id="agent.trading-bot-v2",
+    org_id="org.finco",
+    event_callback=send_to_kafka,  # compliance store
+)
+
+# Within an OTel span — dual-emit happens automatically
+event = instrumentor.inject_success(
+    policy_name="policy.trading-limits",
+    policy_version=4,
+    content="Max position: $10M...",
+    data_classification="confidential",
+)
+# -> AIGP event sent to Kafka (compliance)
+# -> OTel span event with aigp.* attributes (observability)
+```
+
+> Full details: [Spec Section 11.4-11.7](./spec/aigp-spec.md#114-opentelemetry-span-correlation)
+
+---
+
 ## Reference Implementation
 
 [Sandarb](https://sandarb.ai) is the first reference implementation of AIGP. It produces AIGP events across every integration path (A2A, MCP, REST API) and streams them through Kafka and ClickHouse for real-time governance analytics.
@@ -210,6 +262,8 @@ We don't have all the answers. AI governance is a new field, and the right forma
 |----------|------|
 | Formal Specification | [`spec/aigp-spec.md`](./spec/aigp-spec.md) |
 | JSON Schema | [`schema/aigp-event.schema.json`](./schema/aigp-event.schema.json) |
+| OTel Semantic Conventions | [`integrations/opentelemetry/`](./integrations/opentelemetry/) |
+| Python SDK | [`sdks/python/`](./sdks/python/) |
 | Changelog | [`CHANGELOG.md`](./CHANGELOG.md) |
 | Example Events | [`examples/`](./examples/) |
 | Issues | [github.com/sandarb-ai/aigp/issues](https://github.com/sandarb-ai/aigp/issues) |

@@ -1,0 +1,50 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "aigp-otel"
+version = "0.3.0"
+description = "AIGP-OpenTelemetry bridge: governance-proof semantic payload meets distributed tracing"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.10"
+authors = [
+    { name = "AIGP Community" },
+]
+keywords = ["aigp", "opentelemetry", "governance", "audit", "ai-agents", "tracing"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: System :: Monitoring",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+dependencies = [
+    "opentelemetry-api>=1.20.0",
+    "opentelemetry-sdk>=1.20.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+]
+exporters = [
+    "opentelemetry-exporter-otlp>=1.20.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/sandarb-ai/aigp"
+Documentation = "https://github.com/sandarb-ai/aigp/tree/main/sdks/python"
+Repository = "https://github.com/sandarb-ai/aigp"
+Issues = "https://github.com/sandarb-ai/aigp/issues"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

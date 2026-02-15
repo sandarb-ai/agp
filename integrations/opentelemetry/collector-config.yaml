@@ -1,0 +1,191 @@
+# AIGP OpenTelemetry Collector Configuration
+# ============================================
+# Reference configuration for bridging OTel telemetry with AIGP governance events.
+#
+# Architecture:
+#   OTel SDK (agents) -> OTLP Receiver -> AIGP Processors -> Dual Export
+#                                                             |-> OTel backend (observability)
+#                                                             |-> AIGP store (compliance)
+#
+# This configuration demonstrates:
+#   1. Receiving OTel spans with gen_ai.* and aigp.* attributes
+#   2. Enriching spans with governance metadata via transform processor
+#   3. Routing AIGP-relevant spans to compliance storage
+#   4. Exporting to both observability and governance backends
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  # -------------------------------------------------------
+  # 1. Batch processor for throughput optimization
+  # -------------------------------------------------------
+  batch:
+    send_batch_size: 1024
+    timeout: 5s
+
+  # -------------------------------------------------------
+  # 2. Resource detection: auto-attach infrastructure context
+  # -------------------------------------------------------
+  resourcedetection:
+    detectors: [env, system]
+    system:
+      hostname_sources: [os]
+
+  # -------------------------------------------------------
+  # 3. AIGP governance enrichment via transform processor
+  #    Uses OpenTelemetry Transformation Language (OTTL)
+  # -------------------------------------------------------
+  transform/aigp_enrich:
+    trace_statements:
+      - context: span
+        statements:
+          # Derive aigp.enforcement.result from event type
+          - set(attributes["aigp.enforcement.result"], "allowed")
+            where attributes["aigp.event.type"] != nil
+              and not IsMatch(attributes["aigp.event.type"], ".*DENIED.*")
+              and not IsMatch(attributes["aigp.event.type"], ".*VIOLATION.*")
+
+          - set(attributes["aigp.enforcement.result"], "denied")
+            where attributes["aigp.event.type"] != nil
+              and (IsMatch(attributes["aigp.event.type"], ".*DENIED.*")
+                or IsMatch(attributes["aigp.event.type"], ".*VIOLATION.*"))
+
+          # Set span status to ERROR for violations and denials
+          - set(status.code, 2)
+            where attributes["aigp.severity"] == "critical"
+              or attributes["aigp.severity"] == "high"
+
+          - set(status.message, Concat(["AIGP: ", attributes["aigp.event.type"], " - ", attributes["aigp.denial.reason"]], ""))
+            where attributes["aigp.enforcement.result"] == "denied"
+              and attributes["aigp.denial.reason"] != nil
+
+  # -------------------------------------------------------
+  # 4. Filter: route only AIGP-relevant spans to compliance
+  # -------------------------------------------------------
+  filter/aigp_only:
+    traces:
+      span:
+        - attributes["aigp.event.id"] != nil
+
+  # -------------------------------------------------------
+  # 5. Attributes processor: promote baggage to span attributes
+  #    (for agents that propagate governance context via baggage)
+  # -------------------------------------------------------
+  attributes/baggage_to_span:
+    actions:
+      - key: aigp.policy.name
+        from_context: baggage
+        action: upsert
+      - key: aigp.data.classification
+        from_context: baggage
+        action: upsert
+      - key: aigp.org.id
+        from_context: baggage
+        action: upsert
+
+  # -------------------------------------------------------
+  # 6. Redaction: strip sensitive fields before export
+  #    Ensures governance hashes and PII don't leak to
+  #    non-compliance backends
+  # -------------------------------------------------------
+  transform/redact_for_observability:
+    trace_statements:
+      - context: span
+        statements:
+          # Remove source_ip for privacy in observability backends
+          - delete_key(attributes, "aigp.source.ip")
+
+exporters:
+  # -------------------------------------------------------
+  # Primary: OTel observability backend (all spans)
+  # -------------------------------------------------------
+  otlp/observability:
+    endpoint: "otel-backend.example.com:4317"
+    tls:
+      insecure: false
+    headers:
+      Authorization: "Bearer ${OTEL_BACKEND_TOKEN}"
+    retry_on_failure:
+      enabled: true
+      initial_interval: 5s
+      max_interval: 30s
+    sending_queue:
+      enabled: true
+      num_consumers: 10
+
+  # -------------------------------------------------------
+  # Compliance: AIGP governance store (AIGP-relevant spans only)
+  # Option A: Kafka for high-throughput compliance pipelines
+  # -------------------------------------------------------
+  kafka/aigp_compliance:
+    brokers:
+      - "kafka-broker-1.example.com:9092"
+      - "kafka-broker-2.example.com:9092"
+    topic: "aigp-governance-events"
+    protocol_version: "3.0.0"
+    encoding: otlp_json
+    producer:
+      compression: zstd
+      flush_max_messages: 500
+
+  # -------------------------------------------------------
+  # Compliance: Option B: HTTP endpoint for AIGP event store
+  # -------------------------------------------------------
+  otlphttp/aigp_store:
+    endpoint: "https://aigp-store.example.com/v1/events"
+    tls:
+      insecure: false
+    headers:
+      Authorization: "Bearer ${AIGP_STORE_TOKEN}"
+      Content-Type: "application/json"
+
+  # -------------------------------------------------------
+  # Debug: console logging for development
+  # -------------------------------------------------------
+  debug:
+    verbosity: detailed
+    sampling_initial: 5
+    sampling_thereafter: 200
+
+service:
+  pipelines:
+    # ---------------------------------------------------------
+    # Pipeline 1: All traces -> observability backend
+    # Enriched with AIGP attributes, redacted for privacy
+    # ---------------------------------------------------------
+    traces/observability:
+      receivers: [otlp]
+      processors:
+        - resourcedetection
+        - attributes/baggage_to_span
+        - transform/aigp_enrich
+        - transform/redact_for_observability
+        - batch
+      exporters: [otlp/observability]
+
+    # ---------------------------------------------------------
+    # Pipeline 2: AIGP-relevant traces -> compliance store
+    # Only spans with aigp.event.id are forwarded
+    # Full governance context preserved (no redaction)
+    # ---------------------------------------------------------
+    traces/compliance:
+      receivers: [otlp]
+      processors:
+        - resourcedetection
+        - attributes/baggage_to_span
+        - transform/aigp_enrich
+        - filter/aigp_only
+        - batch
+      exporters: [kafka/aigp_compliance]
+
+  telemetry:
+    logs:
+      level: info
+    metrics:
+      address: 0.0.0.0:8888
