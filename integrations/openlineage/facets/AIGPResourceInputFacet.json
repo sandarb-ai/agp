@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/sandarb-ai/aigp/blob/v0.5.0/integrations/openlineage/facets/AIGPResourceInputFacet.json",
+  "$id": "https://github.com/sandarb-ai/aigp/blob/v0.6.0/integrations/openlineage/facets/AIGPResourceInputFacet.json",
   "$defs": {
     "AIGPResourceInputFacet": {
       "allOf": [
@@ -12,8 +12,8 @@
           "properties": {
             "resourceType": {
               "type": "string",
-              "enum": ["policy", "prompt", "tool", "context", "lineage"],
-              "description": "AIGP resource type. 'context' for general pre-execution context; 'lineage' for data lineage snapshots."
+              "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+              "description": "AIGP resource type. Standard types: policy, prompt, tool, lineage, context. Custom types matching this pattern are permitted."
             },
             "resourceName": {
               "type": "string",

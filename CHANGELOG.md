@@ -5,6 +5,32 @@ All notable changes to the AIGP specification will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-02-15
+
+### Added
+- **Resources + Annotations extensibility model** — AIGP's two-primitive approach to forward-compatible extensibility
+- `annotations` field — informational context for governance events (NOT included in governance hashes, NOT governed). Replaces `metadata`.
+- `spec_version` optional field — declares which AIGP specification version the producer implemented
+- Open `resource_type` pattern — implementations MAY define custom resource types matching `^[a-z][a-z0-9]*(-[a-z0-9]+)*$` without a specification change
+- Must-ignore rule — consumers MUST ignore unknown resource types and annotation keys
+- Additive-only minor version guarantee — minor versions MUST NOT remove, rename, or change semantics of existing fields
+- Custom resource type tests (e.g., `"compliance"`, `"approval"`, `"audit-log"`)
+
+### Changed
+- **Breaking:** `metadata` field renamed to `annotations` (schema, spec, SDK, all examples)
+- **Breaking:** `ext_` extension field prefix mechanism removed (patternProperties removed from JSON schema, Section 5.8 removed from spec)
+- `resource_type` validation changed from closed enum to open pattern (Python SDK uses regex instead of tuple)
+- Principle 5 rewritten as "Forward-Compatible Extensibility" with Resources + Annotations
+- Security Section 14.2: `ext_signature` / `ext_key_id` → `annotations.signature` / `annotations.key_id`
+- Conformance levels updated for `annotations` and `spec_version`
+- All OpenLineage facet schema URLs updated to v0.6.0
+- Spec version bumped to 0.6.0
+- Standard resource type documentation order: policy, prompt, tool, lineage, context (context always last)
+
+### Removed
+- `metadata` field (replaced by `annotations`)
+- `ext_` extension field prefix mechanism (Section 5.8 and patternProperties)
+
 ## [0.5.0] - 2026-02-15
 
 ### Added

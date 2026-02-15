@@ -25,7 +25,7 @@
   "request_method": "A2A",
   "request_path": "/.well-known/agent.json",
   "ingested_at": "2025-02-18T13:45:22.890Z",
-  "metadata": {
+  "annotations": {
     "target_agent": "agent.shipping-calculator",
     "target_org": "org.summit-retail",
     "a2a_method": "tasks/send",

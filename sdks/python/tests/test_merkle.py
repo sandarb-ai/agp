@@ -64,15 +64,40 @@ class TestComputeLeafHash:
         expected = hashlib.sha256(f"{rtype}:{rname}:{content}".encode("utf-8")).hexdigest()
         assert compute_leaf_hash(rtype, rname, content) == expected
 
-    def test_invalid_resource_type_raises(self):
-        """resource_type not in {policy, prompt, tool} raises ValueError."""
+    def test_invalid_resource_type_uppercase(self):
+        """Uppercase resource_type is rejected."""
         with pytest.raises(ValueError, match="Invalid resource_type"):
-            compute_leaf_hash("agent", "agent.bot", "content")
+            compute_leaf_hash("Policy", "Policy.test", "content")
 
-    def test_invalid_resource_type_model(self):
-        """'model' is not a valid resource type."""
+    def test_invalid_resource_type_empty(self):
+        """Empty resource_type is rejected."""
         with pytest.raises(ValueError, match="Invalid resource_type"):
-            compute_leaf_hash("model", "model.gpt-4", "content")
+            compute_leaf_hash("", "", "content")
+
+    def test_invalid_resource_type_spaces(self):
+        """Resource type with spaces is rejected."""
+        with pytest.raises(ValueError, match="Invalid resource_type"):
+            compute_leaf_hash("my type", "my type.test", "content")
+
+    def test_invalid_resource_type_underscores(self):
+        """Resource type with underscores is rejected (kebab-case only)."""
+        with pytest.raises(ValueError, match="Invalid resource_type"):
+            compute_leaf_hash("my_type", "my_type.test", "content")
+
+    def test_custom_resource_type_compliance(self):
+        """Custom resource type 'compliance' is accepted (open pattern)."""
+        result = compute_leaf_hash("compliance", "compliance.finra-3110", "Rule content")
+        assert len(result) == 64
+
+    def test_custom_resource_type_approval(self):
+        """Custom resource type 'approval' is accepted (open pattern)."""
+        result = compute_leaf_hash("approval", "approval.ciso-sign-off", "Approved")
+        assert len(result) == 64
+
+    def test_custom_resource_type_kebab_case(self):
+        """Custom resource type with hyphens is accepted."""
+        result = compute_leaf_hash("audit-log", "audit-log.session-1", "Log data")
+        assert len(result) == 64
 
     def test_utf8_content(self):
         """Leaf hash handles UTF-8 content correctly."""
@@ -237,7 +262,7 @@ class TestComputeMerkleGovernanceHash:
             assert "resource_type" in leaf
             assert "resource_name" in leaf
             assert "hash" in leaf
-            assert leaf["resource_type"] in ("policy", "prompt", "tool", "context", "lineage")
+            assert re.match(r"^[a-z][a-z0-9]*(-[a-z0-9]+)*$", leaf["resource_type"])
             assert len(leaf["hash"]) == 64
 
     def test_different_resource_sets_produce_different_roots(self):
@@ -350,7 +375,7 @@ class TestMerkleInEvent:
 
 
 # ===================================================================
-# Context Resource Type Tests (v0.5.0)
+# Context Resource Type Tests (v0.6.0)
 # ===================================================================
 
 class TestContextResourceType:
@@ -375,7 +400,7 @@ class TestContextResourceType:
         tool_hash = compute_leaf_hash("tool", "tool.test", content)
         lineage_hash = compute_leaf_hash("lineage", "lineage.test", content)
 
-        # All five types must produce different hashes
+        # All five standard types must produce different hashes
         all_hashes = {context_hash, policy_hash, prompt_hash, tool_hash, lineage_hash}
         assert len(all_hashes) == 5
 
@@ -390,20 +415,12 @@ class TestContextResourceType:
         assert len(root_hash) == 64
         assert merkle_tree is not None
         assert merkle_tree["leaf_count"] == 3
-        # Verify all three resource types appear in leaves
         leaf_types = {leaf["resource_type"] for leaf in merkle_tree["leaves"]}
         assert leaf_types == {"policy", "prompt", "context"}
 
-    def test_invalid_resource_type_still_rejected(self):
-        """Unknown resource types are still rejected."""
-        with pytest.raises(ValueError, match="Invalid resource_type"):
-            compute_leaf_hash("dataset", "dataset.test", "content")
-        with pytest.raises(ValueError, match="Invalid resource_type"):
-            compute_leaf_hash("agent", "agent.bot", "content")
-
 
 # ===================================================================
-# Lineage Resource Type Tests (v0.5.0)
+# Lineage Resource Type Tests (v0.6.0)
 # ===================================================================
 
 class TestLineageResourceType:
@@ -428,7 +445,7 @@ class TestLineageResourceType:
         prompt_hash = compute_leaf_hash("prompt", "prompt.test", content)
         tool_hash = compute_leaf_hash("tool", "tool.test", content)
 
-        # All five types must produce different hashes
+        # All five standard types must produce different hashes
         all_hashes = {lineage_hash, context_hash, policy_hash, prompt_hash, tool_hash}
         assert len(all_hashes) == 5
 
@@ -437,19 +454,51 @@ class TestLineageResourceType:
         resources = [
             ("policy", "policy.trading-limits", "Max position: $10M"),
             ("prompt", "prompt.support-v3", "You are a helpful assistant"),
-            ("context", "context.env-config", '{"env": "production"}'),
             ("lineage", "lineage.upstream-orders", '{"datasets": ["orders"]}'),
+            ("context", "context.env-config", '{"env": "production"}'),
         ]
         root_hash, merkle_tree = compute_merkle_governance_hash(resources)
         assert len(root_hash) == 64
         assert merkle_tree is not None
         assert merkle_tree["leaf_count"] == 4
         leaf_types = {leaf["resource_type"] for leaf in merkle_tree["leaves"]}
-        assert leaf_types == {"policy", "prompt", "context", "lineage"}
+        assert leaf_types == {"policy", "prompt", "lineage", "context"}
 
-    def test_invalid_resource_type_still_rejected(self):
-        """Unknown resource types are still rejected even with lineage added."""
+
+# ===================================================================
+# Custom Resource Type Tests (v0.6.0 — Open resource_type pattern)
+# ===================================================================
+
+class TestCustomResourceType:
+    """Tests for custom (non-standard) resource types in Merkle tree governance."""
+
+    def test_custom_type_in_merkle_tree(self):
+        """Custom resource types participate in Merkle tree alongside standard types."""
+        resources = [
+            ("policy", "policy.trading-limits", "Max position: $10M"),
+            ("compliance", "compliance.finra-3110", "FINRA Rule 3110 content"),
+        ]
+        root_hash, merkle_tree = compute_merkle_governance_hash(resources)
+        assert len(root_hash) == 64
+        assert merkle_tree is not None
+        assert merkle_tree["leaf_count"] == 2
+        leaf_types = {leaf["resource_type"] for leaf in merkle_tree["leaves"]}
+        assert leaf_types == {"policy", "compliance"}
+
+    def test_custom_type_domain_separation(self):
+        """Custom type 'compliance' produces different hash from standard types."""
+        content = "same content"
+        compliance_hash = compute_leaf_hash("compliance", "compliance.test", content)
+        policy_hash = compute_leaf_hash("policy", "policy.test", content)
+        assert compliance_hash != policy_hash
+
+    def test_pattern_rejects_invalid_types(self):
+        """Invalid patterns are still rejected."""
         with pytest.raises(ValueError, match="Invalid resource_type"):
-            compute_leaf_hash("dataset", "dataset.test", "content")
+            compute_leaf_hash("POLICY", "POLICY.test", "content")
         with pytest.raises(ValueError, match="Invalid resource_type"):
-            compute_leaf_hash("model", "model.gpt-4", "content")
+            compute_leaf_hash("", "", "content")
+        with pytest.raises(ValueError, match="Invalid resource_type"):
+            compute_leaf_hash("has spaces", "has spaces.test", "content")
+        with pytest.raises(ValueError, match="Invalid resource_type"):
+            compute_leaf_hash("under_score", "under_score.test", "content")

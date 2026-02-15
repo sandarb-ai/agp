@@ -34,5 +34,5 @@
 
   "ingested_at": "2025-01-15T16:45:00.890Z",
 
-  "metadata": {"regulatory_hooks": ["SEC", "FINRA"], "escalated_to": "compliance-team@finco.com", "auto_blocked": true}
+  "annotations": {"regulatory_hooks": ["SEC", "FINRA"], "escalated_to": "compliance-team@finco.com", "auto_blocked": true}
 }

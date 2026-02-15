@@ -34,5 +34,5 @@
 
   "ingested_at": "2025-01-15T09:00:00.567Z",
 
-  "metadata": {"a2a_url": "https://compliance-checker.finco.internal/.well-known/agent.json", "owner_team": "risk-engineering"}
+  "annotations": {"a2a_url": "https://compliance-checker.finco.internal/.well-known/agent.json", "owner_team": "risk-engineering"}
 }

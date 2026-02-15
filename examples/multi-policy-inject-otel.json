@@ -37,7 +37,7 @@
 
   "ingested_at": "2026-02-15T11:15:01.234Z",
 
-  "metadata": {
+  "annotations": {
     "regulatory_hooks": ["FINRA", "SEC", "CFTC"],
     "delivery_latency_ms": 8,
     "all_policies": [

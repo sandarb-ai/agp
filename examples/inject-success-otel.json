@@ -37,14 +37,8 @@
 
   "ingested_at": "2026-02-15T10:30:01.789Z",
 
-  "metadata": {
-    "regulatory_hooks": ["FINRA", "SEC"],
-    "delivery_latency_ms": 12,
-    "otel_resource": {
-      "service.name": "trading-bot-v2",
-      "service.version": "2.4.1",
-      "deployment.environment": "production"
-    },
-    "w3c_traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
-  }
+  "annotations": {
+    "regulatory_hooks": ["FINRA", "SEC"]
+  },
+  "spec_version": "0.6.0"
 }

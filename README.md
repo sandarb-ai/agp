@@ -1,7 +1,7 @@
 # AI Governance Proof (AIGP)&trade;
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
-[![Spec](https://img.shields.io/badge/Spec-v0.5.0-violet.svg)](./spec/aigp-spec.md)
+[![Spec](https://img.shields.io/badge/Spec-v0.6.0-violet.svg)](./spec/aigp-spec.md)
 [![Schema](https://img.shields.io/badge/JSON_Schema-valid-green.svg)](./schema/aigp-event.schema.json)
 [![OTel](https://img.shields.io/badge/OpenTelemetry-compatible-orange.svg)](./integrations/opentelemetry/semantic-conventions.md)
 [![OpenLineage](https://img.shields.io/badge/OpenLineage-compatible-blueviolet.svg)](./integrations/openlineage/semantic-conventions.md)
@@ -83,7 +83,7 @@ Every AIGP event has these required fields. The full schema (25+ fields) is in t
 | `governance_hash` | String | SHA-256 hash of the governed content — the cryptographic proof |
 | `trace_id` | String | Distributed trace ID for end-to-end correlation |
 
-Optional but recommended: `policy_name`, `policy_version`, `prompt_name`, `prompt_version`, `data_classification`, `org_id`, `denial_reason`, `severity`, `metadata`.
+Optional but recommended: `policy_name`, `policy_version`, `prompt_name`, `prompt_version`, `data_classification`, `org_id`, `denial_reason`, `severity`, `annotations`, `spec_version`.
 
 > **Full schema:** [`spec/aigp-spec.md`](./spec/aigp-spec.md) | **JSON Schema:** [`schema/aigp-event.schema.json`](./schema/aigp-event.schema.json)
 
@@ -93,7 +93,7 @@ Optional but recommended: `policy_name`, `policy_version`, `prompt_name`, `promp
 2. **Tamper-evident by default.** Every event includes a `governance_hash`. If content changes between creation and storage, the hash won't match.
 3. **Traceable end-to-end.** Every event carries a `trace_id`. One query reconstructs the full chain: which agent, which prompt, which policy, what happened.
 4. **Flat and queryable.** Single wide event table — no joins for governance queries. Designed for OLAP stores.
-5. **Extensible, not rigid.** The `metadata` object and `ext_`-prefixed fields allow domain-specific data without breaking the schema.
+5. **Forward-compatible extensibility.** Two primitives: **Resources** (governed, hashed, in the Merkle tree) and **Annotations** (informational, unhashed). Open resource types — implementations define custom types without a spec change. Consumers ignore what they don't recognize.
 
 ---
 
@@ -187,7 +187,8 @@ A trading bot successfully receives a governed policy:
   "trace_id": "550e8400-e29b-41d4-a716-446655440000",
   "data_classification": "confidential",
   "template_rendered": true,
-  "metadata": {"regulatory_hooks": ["FINRA", "SEC"]}
+  "annotations": {"regulatory_hooks": ["FINRA", "SEC"]},
+  "spec_version": "0.6.0"
 }
 ```
 

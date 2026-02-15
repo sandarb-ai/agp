@@ -7,9 +7,15 @@ OpenTelemetry correlation fields (span_id, parent_span_id, trace_flags).
 """
 
 import hashlib
+import re
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Optional
+
+# Pattern for valid resource types (AIGP Spec Section 8.8.2).
+# Open pattern: lowercase kebab-case. Standard types: policy, prompt, tool, lineage, context.
+# Implementations MAY define custom types matching this pattern.
+_RESOURCE_TYPE_PATTERN = re.compile(r"^[a-z][a-z0-9]*(-[a-z0-9]+)*$")
 
 
 def compute_governance_hash(
@@ -54,17 +60,20 @@ def compute_leaf_hash(
     content produce different leaf hashes.
 
     Args:
-        resource_type: One of "policy", "prompt", "tool", "context", "lineage".
+        resource_type: A lowercase kebab-case string matching ^[a-z][a-z0-9]*(-[a-z0-9]+)*$.
+            Standard types: "policy", "prompt", "tool", "lineage", "context".
+            Custom types (e.g., "compliance", "approval") are permitted.
         resource_name: AGRN-format name (e.g., "policy.trading-limits").
         content: The governed content string.
 
     Returns:
         Lowercase hexadecimal hash string (64 chars, SHA-256).
     """
-    if resource_type not in ("policy", "prompt", "tool", "context", "lineage"):
+    if not _RESOURCE_TYPE_PATTERN.match(resource_type):
         raise ValueError(
-            f"Invalid resource_type: {resource_type}. "
-            "Must be 'policy', 'prompt', 'tool', 'context', or 'lineage'."
+            f"Invalid resource_type: {resource_type!r}. "
+            "Must match pattern ^[a-z][a-z0-9]*(-[a-z0-9]+)*$ "
+            "(e.g., 'policy', 'prompt', 'tool', 'lineage', 'context', 'compliance')."
         )
     prefixed = f"{resource_type}:{resource_name}:{content}"
     return hashlib.sha256(prefixed.encode("utf-8")).hexdigest()
@@ -125,7 +134,8 @@ def compute_merkle_governance_hash(
 
     Args:
         resources: List of (resource_type, resource_name, content) tuples.
-            resource_type: "policy", "prompt", or "tool"
+            resource_type: Any valid type (e.g., "policy", "prompt", "tool",
+                "lineage", "context", or custom types like "compliance")
             resource_name: AGRN name (e.g., "policy.trading-limits")
             content: The governed content string
 
@@ -203,13 +213,15 @@ def create_aigp_event(
     source_ip: str = "",
     request_method: str = "",
     request_path: str = "",
-    # Extension
-    metadata: Optional[dict[str, Any]] = None,
+    # Annotations (Section 5.7)
+    annotations: Optional[dict[str, Any]] = None,
+    # Version
+    spec_version: str = "0.6.0",
     # Merkle tree (Section 8.8)
     governance_merkle_tree: Optional[dict[str, Any]] = None,
 ) -> dict[str, Any]:
     """
-    Create an AIGP event conforming to the v0.3.0 schema.
+    Create an AIGP event conforming to the v0.6.0 schema.
 
     This function creates the standalone AIGP JSON event (the governance
     record). For the OTel span event (the observability record), use
@@ -224,10 +236,12 @@ def create_aigp_event(
         span_id: OTel span ID (16-char hex). Optional.
         parent_span_id: OTel parent span ID (16-char hex). Optional.
         trace_flags: W3C trace flags (2-char hex). Optional.
+        annotations: Informational context (not hashed). Optional.
+        spec_version: AIGP spec version. Default "0.6.0".
         ... (remaining fields per AIGP spec)
 
     Returns:
-        Dict conforming to AIGP event schema v0.3.0.
+        Dict conforming to AIGP event schema v0.6.0.
     """
     now = datetime.now(timezone.utc)
 
@@ -259,7 +273,7 @@ def create_aigp_event(
         # Governance fields (Section 5.4)
         "hash_type": hash_type,
         "data_classification": data_classification,
-        # Metadata (Section 5.7)
+        # Timestamps and rendering (Section 5.7)
         "template_rendered": template_rendered,
         # Denial fields (Section 5.5)
         "denial_reason": denial_reason,
@@ -269,8 +283,10 @@ def create_aigp_event(
         "source_ip": source_ip,
         "request_method": request_method,
         "request_path": request_path,
-        # Extension (Section 5.7)
-        "metadata": metadata or {},
+        # Annotations (Section 5.7) — informational, not hashed
+        "annotations": annotations or {},
+        # Version (Section 5.7)
+        "spec_version": spec_version,
     }
 
     # Merkle tree (Section 8.8) — only present when used

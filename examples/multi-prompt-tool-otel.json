@@ -37,7 +37,7 @@
 
   "ingested_at": "2026-02-15T12:00:00.567Z",
 
-  "metadata": {
+  "annotations": {
     "all_policies": [
       {"name": "policy.refund-limits", "version": 3},
       {"name": "policy.customer-privacy", "version": 5},

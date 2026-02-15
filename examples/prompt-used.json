@@ -25,7 +25,7 @@
   "request_method": "GET",
   "request_path": "/api/prompts/nda-review-checklist/content",
   "ingested_at": "2025-01-20T10:15:31.012Z",
-  "metadata": {
+  "annotations": {
     "regulatory_hooks": [
       "ABA-MODEL-RULES"
     ],

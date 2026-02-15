@@ -35,28 +35,10 @@
   "request_method": "POST",
   "request_path": "/api/agents/customer-support-v3/invoke",
 
-  "metadata": {
-    "all_resources": [
-      {"type": "policy", "name": "policy.refund-limits"},
-      {"type": "policy", "name": "policy.customer-privacy"},
-      {"type": "prompt", "name": "prompt.customer-support-v3"},
-      {"type": "tool", "name": "tool.order-lookup"},
-      {"type": "tool", "name": "tool.refund-processor"},
-      {"type": "context", "name": "context.env-config"},
-      {"type": "lineage", "name": "lineage.upstream-orders"}
-    ],
-    "regulatory_hooks": ["CCPA", "PCI-DSS"],
-    "otel_attributes": {
-      "aigp.governance.hash_type": "merkle-sha256",
-      "aigp.governance.merkle.leaf_count": 7,
-      "aigp.policies.names": ["policy.refund-limits", "policy.customer-privacy"],
-      "aigp.prompts.names": ["prompt.customer-support-v3"],
-      "aigp.tools.names": ["tool.order-lookup", "tool.refund-processor"],
-      "aigp.contexts.names": ["context.env-config"],
-      "aigp.lineages.names": ["lineage.upstream-orders"]
-    },
-    "w3c_traceparent": "00-aabbccdd11223344556677889900aabb-1122334455667788-01"
+  "annotations": {
+    "regulatory_hooks": ["CCPA", "PCI-DSS"]
   },
+  "spec_version": "0.6.0",
 
   "governance_merkle_tree": {
     "algorithm": "sha256",

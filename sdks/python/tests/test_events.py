@@ -137,7 +137,8 @@ class TestCreateAIGPEvent:
         assert event["data_classification"] == ""
         assert event["denial_reason"] == ""
         assert event["severity"] == ""
-        assert event["metadata"] == {}
+        assert event["annotations"] == {}
+        assert event["spec_version"] == "0.6.0"
 
     def test_json_serializable(self):
         """AIGP events MUST be representable as JSON (Section 2.2)."""
@@ -146,7 +147,7 @@ class TestCreateAIGPEvent:
             event_category="inject",
             agent_id="agent.test-bot",
             trace_id="test-trace",
-            metadata={"regulatory_hooks": ["FINRA", "SEC"]},
+            annotations={"regulatory_hooks": ["FINRA", "SEC"]},
         )
         # Should not raise
         json_str = json.dumps(event)

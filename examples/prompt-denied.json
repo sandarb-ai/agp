@@ -25,7 +25,7 @@
   "request_method": "GET",
   "request_path": "/api/prompts/fraud-detection-rules/content",
   "ingested_at": "2025-01-20T10:18:45.678Z",
-  "metadata": {
+  "annotations": {
     "requested_by_service": "inventory-mgmt-api",
     "escalated": false
   }

@@ -25,7 +25,7 @@
   "request_method": "POST",
   "request_path": "/api/policies/pol-305/versions/ver-003/approve",
   "ingested_at": "2025-02-14T14:00:01.234Z",
-  "metadata": {
+  "annotations": {
     "approved_by": "legal-ops@vanguard-ecommerce.com",
     "regulatory_hooks": [
       "GDPR",

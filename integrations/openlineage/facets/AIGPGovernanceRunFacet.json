@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/sandarb-ai/aigp/blob/v0.5.0/integrations/openlineage/facets/AIGPGovernanceRunFacet.json",
+  "$id": "https://github.com/sandarb-ai/aigp/blob/v0.6.0/integrations/openlineage/facets/AIGPGovernanceRunFacet.json",
   "$defs": {
     "AIGPGovernanceRunFacet": {
       "allOf": [
@@ -46,7 +46,7 @@
             "specVersion": {
               "type": "string",
               "description": "AIGP specification version this facet conforms to.",
-              "default": "0.5.0"
+              "default": "0.6.0"
             }
           },
           "required": ["governanceHash", "hashType", "agentId", "traceId"],

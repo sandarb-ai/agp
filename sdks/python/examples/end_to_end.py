@@ -122,7 +122,7 @@ def compliance_store_callback(aigp_event: dict) -> None:
     - trace_id / span_id: W3C trace context for correlation with OTel and OpenLineage
     - governance_hash: SHA-256 or Merkle root — the cryptographic proof
     - data_classification: public / internal / confidential / restricted
-    - metadata: Regulatory hooks, resource lists, OTel attributes
+    - annotations: Regulatory hooks, supplementary context (not hashed)
     """
     print(f"\n--- AIGP Event -> Compliance Store ---")
     print(f"  event_type:      {aigp_event['event_type']}")
@@ -179,7 +179,7 @@ def main():
     provider.add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter()))
     trace.set_tracer_provider(provider)
 
-    tracer = trace.get_tracer("aigp.example", "0.5.0")
+    tracer = trace.get_tracer("aigp.example", "0.6.0")
 
     # =====================================================================
     # Scenario 2: Single Policy Injection
@@ -220,7 +220,7 @@ def main():
             template_rendered=True,                 # Was the policy template-rendered?
             request_method="GET",                   # HTTP method used to fetch policy
             request_path="/api/policies/trading-limits/content",
-            metadata={"regulatory_hooks": ["FINRA", "SEC"]},  # Compliance metadata
+            annotations={"regulatory_hooks": ["FINRA", "SEC"]},  # Informational annotations
         )
 
     # =====================================================================
@@ -250,7 +250,7 @@ def main():
             ],
             content=combined_content,
             data_classification="confidential",
-            metadata={"regulatory_hooks": ["FINRA", "SEC", "CFTC"]},
+            annotations={"regulatory_hooks": ["FINRA", "SEC", "CFTC"]},
         )
 
     # =====================================================================
@@ -307,7 +307,7 @@ def main():
             policy_name="policy.pre-release-earnings",
             policy_version=2,
             content="Q4 earnings: $2.3B revenue...",
-            metadata={
+            annotations={
                 "regulatory_hooks": ["SEC", "FINRA"],
                 "escalated_to": "compliance-team@finco.com",
                 "auto_blocked": True,
@@ -319,7 +319,7 @@ def main():
     # =====================================================================
     #
     # When one agent calls another (A2A), governance context must propagate.
-    # AIGP uses W3C Baggage (RFC 8941) to carry governance metadata across
+    # AIGP uses W3C Baggage (RFC 8941) to carry governance context across
     # service boundaries:
     #
     #   Calling Agent                    Receiving Agent
@@ -351,7 +351,7 @@ def main():
             request_method="A2A",
             request_path="/.well-known/agent.json",  # Google A2A discovery endpoint
             data_classification="internal",
-            metadata={
+            annotations={
                 "target_agent": "agent.shipping-calculator",
                 "a2a_method": "tasks/send",
             },
@@ -365,7 +365,7 @@ def main():
     # Scenario 7: tracestate Vendor Key
     # =====================================================================
     #
-    # W3C tracestate allows multiple vendors to attach metadata to a trace.
+    # W3C tracestate allows multiple vendors to attach context to a trace.
     # AIGP injects a vendor key ("aigp=...") alongside existing entries
     # (e.g., other vendor entries like "dd=s:1", "rojo=t61rcWkgMzE").
     #
@@ -449,7 +449,7 @@ def main():
                  '{"name": "position-calculator", "scope": "read"}'),
             ],
             data_classification="confidential",
-            metadata={"regulatory_hooks": ["FINRA", "SEC"]},
+            annotations={"regulatory_hooks": ["FINRA", "SEC"]},
         )
 
         # Display the Merkle tree structure
@@ -574,7 +574,7 @@ def main():
     # ---- Create the AIGP event (Layer 1: AI Governance) ----
     #
     # This is the canonical governance record. It contains the full Merkle tree,
-    # all leaf hashes, and all metadata needed for regulatory compliance.
+    # all leaf hashes, and all annotations needed for regulatory compliance.
     #
     from aigp_otel.events import create_aigp_event
     aigp_event = create_aigp_event(
@@ -603,7 +603,7 @@ def main():
     #
     # OpenLineage-compatible lineage backends render governed resources
     # as standard datasets in the lineage graph. The aigp_resource facet
-    # provides AIGP-specific metadata for governance-aware UIs.
+    # provides AIGP-specific context for governance-aware UIs.
     #
     # Zero dependency: build_openlineage_run_event() produces plain Python dicts.
     # No openlineage-python library required.

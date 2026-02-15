@@ -1,6 +1,6 @@
 # AI Governance Proof (AIGP) Specification
 
-**Version:** 0.4.0 (Draft)
+**Version:** 0.6.0 (Draft)
 
 **Status:** Draft
 
@@ -43,8 +43,7 @@ Future versions of this specification may introduce breaking changes. Implemente
   - [5.4 Governance Proof Fields](#54-governance-proof-fields)
   - [5.5 Denial and Policy Fields](#55-denial-and-policy-fields)
   - [5.6 Request Fields](#56-request-fields)
-  - [5.7 Metadata and Timestamps](#57-metadata-and-timestamps)
-  - [5.8 Extension Fields](#58-extension-fields)
+  - [5.7 Annotations, Timestamps, and Version](#57-annotations-timestamps-and-version)
 - [6. Event Types](#6-event-types)
   - [6.1 Policy Injection Events](#61-policy-injection-events)
   - [6.2 Prompt Usage Events](#62-prompt-usage-events)
@@ -136,7 +135,7 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 - UUID values MUST conform to [RFC 9562][rfc9562] (UUID version 4).
 - Integer values MUST be represented as JSON numbers without fractional parts.
 - Boolean values MUST be represented as JSON `true` or `false`.
-- The `metadata` field MUST be a JSON-encoded string (i.e., a serialized JSON object within a string value), not a nested JSON object.
+- The `annotations` field MUST be a JSON object (key-value pairs). Annotations are informational and are NOT included in governance hashes.
 
 ### 2.3 String Conventions
 
@@ -148,7 +147,7 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 ## 3. Terminology
 
 **AIGP Event**
-: A single structured record that captures a governance action performed by or upon an AI agent. An AIGP event contains identity, proof, classification, and metadata fields as defined in this specification.
+: A single structured record that captures a governance action performed by or upon an AI agent. An AIGP event contains identity, proof, classification, and annotation fields as defined in this specification.
 
 **Governance Hash**
 : A cryptographic digest (by default SHA-256) computed over the governed content at the time of an action. The governance hash provides tamper evidence: if the content changes after hash computation, the hash will no longer match the content.
@@ -196,10 +195,15 @@ Every AIGP event MUST include a `governance_hash` field. When governed content i
 Every AIGP event MUST carry a `trace_id` for distributed correlation. A single trace identifier MUST be reused across all related events (prompt retrieval, policy injection, inference, audit) so that the full governance chain can be reconstructed from a single query.
 
 **Principle 4: Flat and Queryable.**
-AIGP events SHOULD use a flat (non-nested) record structure. All governance-relevant fields SHOULD be top-level keys. This design enables direct querying without joins, making AIGP events suitable for OLAP engines, columnar stores, and streaming analytics. Implementations MAY use nested structures in the `metadata` field for domain-specific extensions.
+AIGP events SHOULD use a flat (non-nested) record structure. All governance-relevant fields SHOULD be top-level keys. This design enables direct querying without joins, making AIGP events suitable for OLAP engines, columnar stores, and streaming analytics. Implementations MAY use nested structures in the `annotations` field for informational context.
 
-**Principle 5: Extensible, Not Rigid.**
-The specification defines required fields that capture the essentials of every governance action. The `metadata` field and extension field prefix (`ext_`) provide mechanisms for implementations to attach domain-specific data without breaking the core schema. Implementations MUST NOT require consumers to understand extension fields in order to process core AIGP events.
+**Principle 5: Forward-Compatible Extensibility.**
+AIGP provides two extensibility primitives with distinct trust boundaries:
+
+- **Resources** are AIGP's governed extensibility primitive. Every governed artifact (policy, prompt, tool, lineage, context, or any implementation-defined type) is a resource that participates in the Merkle tree and receives a cryptographic hash. The `resource_type` field is an open pattern — implementations MAY define custom resource types without a specification change. Consumers MUST ignore resource types they do not recognize.
+- **Annotations** are AIGP's informational extensibility primitive. The `annotations` field carries supplementary context (regulatory hooks, domain-specific tags, operational notes) that is NOT included in governance hashes and is NOT governed. Consumers MUST ignore annotation keys they do not recognize.
+
+Minor version increments (e.g., 0.6 → 0.7) MUST be additive-only: they MUST NOT remove, rename, or change the semantics of existing fields, resource types, or event types. New fields, resource types, and event types MAY be added.
 
 ---
 
@@ -279,25 +283,16 @@ The following fields are OPTIONAL and capture information about the request that
 | `request_method` | String | `""` | The protocol method or action that triggered the event (e.g., `GET`, `POST`, `A2A`, `MCP`). |
 | `request_path` | String | `""` | The API path, endpoint, or skill name associated with the request. |
 
-### 5.7 Metadata and Timestamps
+### 5.7 Annotations, Timestamps, and Version
 
-The following fields are OPTIONAL and provide extensibility and operational metadata.
+The following fields are OPTIONAL and provide extensibility, operational timestamps, and version context.
 
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `template_rendered` | Boolean | `false` | Indicates whether the policy content was rendered with template variables before delivery. When `true`, the `governance_hash` MUST be computed over the rendered (post-substitution) content. |
 | `ingested_at` | String (DateTime) | *(none)* | The time at which the event was received by the analytics or storage system. MUST be in RFC 3339 format with millisecond precision and UTC timezone designator `Z`. This field enables measurement of ingestion latency (`ingested_at` minus `event_time`). |
-| `metadata` | String (JSON) | `"{}"` | An extensible field for domain-specific data. The value MUST be a valid JSON string (a serialized JSON object). Implementations MAY use this field to attach regulatory hooks, custom tags, framework-specific data, or other non-standard data. Consumers MUST NOT require specific keys within `metadata` to process core AIGP events. |
-
-### 5.8 Extension Fields
-
-Fields prefixed with `ext_` are reserved for implementation-specific extensions. Extension fields allow implementations to add domain-specific top-level fields without conflicting with current or future standard fields.
-
-- Extension field names MUST begin with `ext_` followed by one or more lowercase alphanumeric characters or underscores.
-- Extension field names MUST match the pattern `^ext_[a-z][a-z0-9_]*$`.
-- Implementations MUST NOT require consumers to understand extension fields in order to process core AIGP events.
-- Consumers MUST ignore extension fields they do not recognize.
-- The AIGP JSON Schema (Appendix A) MAY be configured to permit additional properties prefixed with `ext_` while rejecting other unknown fields.
+| `annotations` | Object | `{}` | Informational context for the governance event. Annotations are NOT included in governance hashes and are NOT governed resources. Implementations MAY use this field to attach regulatory hooks, domain-specific tags, or supplementary context that does not require cryptographic proof. Consumers MUST NOT require specific keys within `annotations` to process core AIGP events. Consumers MUST ignore annotation keys they do not recognize. |
+| `spec_version` | String | `""` | The AIGP specification version the producer implemented (e.g., `"0.6.0"`). Consumers MAY use this field to determine which features and resource types to expect. When absent or empty, consumers SHOULD NOT assume any particular version. |
 
 ---
 
@@ -314,7 +309,7 @@ The AIGP specification defines 16 standard event types across 8 categories. Impl
 - **Emitted when:** An agent successfully receives a governed policy. Implementations MUST emit this event when a policy injection request is fulfilled.
 - **Required fields:** All fields from Section 5.1.
 - **SHOULD be present:** `policy_id`, `policy_name`, `policy_version`, `data_classification`, `governance_hash` (non-empty, computed over delivered content), `template_rendered`.
-- **MAY be present:** `org_id`, `org_name`, `agent_name`, `source_ip`, `request_method`, `request_path`, `metadata`.
+- **MAY be present:** `org_id`, `org_name`, `agent_name`, `source_ip`, `request_method`, `request_path`, `annotations`.
 
 #### INJECT_DENIED
 
@@ -350,7 +345,7 @@ The AIGP specification defines 16 standard event types across 8 categories. Impl
 - **Emitted when:** A new agent is registered in the governance registry. Implementations MUST emit this event when an agent is added to the system.
 - **Required fields:** All fields from Section 5.1.
 - **SHOULD be present:** `agent_name`, `org_id`, `org_name`.
-- **Notes:** The `governance_hash` SHOULD be the empty string, as no governed content is involved. Implementations MAY include agent metadata (e.g., A2A endpoint URL, owner team) in the `metadata` field.
+- **Notes:** The `governance_hash` SHOULD be the empty string, as no governed content is involved. Implementations MAY include agent metadata (e.g., A2A endpoint URL, owner team) in the `annotations` field.
 
 #### AGENT_APPROVED
 
@@ -363,7 +358,7 @@ The AIGP specification defines 16 standard event types across 8 categories. Impl
 - **Emitted when:** An agent is deactivated or removed from the governance registry. Implementations MUST emit this event when an agent is deactivated.
 - **Required fields:** All fields from Section 5.1.
 - **SHOULD be present:** `agent_name`, `org_id`.
-- **Notes:** Implementations MAY record the reason for deactivation in the `metadata` field.
+- **Notes:** Implementations MAY record the reason for deactivation in the `annotations` field.
 
 ### 6.4 Policy Lifecycle Events
 
@@ -435,8 +430,8 @@ The AIGP specification defines 16 standard event types across 8 categories. Impl
 - **Emitted when:** An agent-to-agent protocol call is made. Implementations SHOULD emit this event when an agent invokes another agent via any agent-to-agent protocol.
 - **Required fields:** All fields from Section 5.1.
 - **SHOULD be present:** `request_method`, `request_path`.
-- **MAY be present:** `governance_hash` (if governed content is exchanged), `policy_id`, `prompt_id`, `metadata`.
-- **Notes:** Implementations MAY use the `metadata` field to record the target agent identifier, the protocol used (A2A, MCP, etc.), and the outcome of the call.
+- **MAY be present:** `governance_hash` (if governed content is exchanged), `policy_id`, `prompt_id`, `annotations`.
+- **Notes:** Implementations MAY use the `annotations` field to record the target agent identifier, the protocol used (A2A, MCP, etc.), and the outcome of the call.
 
 ### 6.9 Custom Event Types
 
@@ -556,8 +551,8 @@ leaf_hash = SHA-256(UTF-8(resource_type + ":" + resource_name + ":" + content))
 ```
 
 Where:
-- `resource_type` MUST be one of `"policy"`, `"prompt"`, `"tool"`, `"context"`, or `"lineage"`.
-- `resource_name` is the AGRN-format name (e.g., `"policy.trading-limits"`, `"context.env-config"`, `"lineage.upstream-orders"`).
+- `resource_type` MUST match the pattern `^[a-z][a-z0-9]*(-[a-z0-9]+)*$`. Standard types defined by this specification are `"policy"`, `"prompt"`, `"tool"`, `"lineage"`, and `"context"`. Implementations MAY define custom resource types matching this pattern. Consumers MUST ignore resource types they do not recognize.
+- `resource_name` is the AGRN-format name (e.g., `"policy.trading-limits"`, `"lineage.upstream-orders"`, `"context.env-config"`).
 - `content` is the governed content string for that resource.
 - The `":"` separator is the literal colon character (U+003A).
 
@@ -633,7 +628,7 @@ When `hash_type` is `"merkle-sha256"`, the event SHOULD include a top-level `gov
 - `leaves` — An array of leaf objects sorted by `hash` value (lexicographic ascending). This is the same sort order used during tree construction (Section 8.8.3 step 2).
 
 Each leaf object MUST contain:
-- `resource_type` — One of `"policy"`, `"prompt"`, `"tool"`, `"context"`, or `"lineage"`.
+- `resource_type` — A string matching the pattern `^[a-z][a-z0-9]*(-[a-z0-9]+)*$`. Standard types are `"policy"`, `"prompt"`, `"tool"`, `"lineage"`, and `"context"`. Custom types are permitted.
 - `resource_name` — AGRN-format resource name.
 - `hash` — The 64-character lowercase hexadecimal leaf hash computed per Section 8.8.2.
 
@@ -664,7 +659,7 @@ The `data_classification` field uses a four-tier model aligned with common enter
 | 3 | `confidential` | Data that is restricted to authorized individuals on a need-to-know basis. Unauthorized access may have business impact. |
 | 4 | `restricted` | Data of the highest sensitivity with regulatory implications. Unauthorized access may result in legal, financial, or compliance consequences. |
 
-Implementations SHOULD classify all governed content and populate the `data_classification` field for policy injection and prompt usage events. Implementations MAY define sub-classifications within each tier using the `metadata` field.
+Implementations SHOULD classify all governed content and populate the `data_classification` field for policy injection and prompt usage events. Implementations MAY define sub-classifications within each tier using the `annotations` field.
 
 The classification levels are ordered by sensitivity: `public` < `internal` < `confidential` < `restricted`. Implementations that enforce classification-based access control SHOULD deny access when an agent's clearance level is below the content's classification level and MUST emit an appropriate denial or violation event.
 
@@ -909,7 +904,7 @@ An implementation conforms to the **Extended** level if it satisfies all Core re
 2. The `data_classification` field SHOULD be populated for events involving governed content.
 3. The `severity` field SHOULD be populated for denial and violation events.
 4. Resource identifiers SHOULD follow AGRN naming conventions (Section 7).
-5. The `metadata` field SHOULD be a valid JSON-encoded string when present.
+5. The `annotations` field SHOULD be a valid JSON object when present.
 
 ### 12.3 Full Conformance
 
@@ -918,8 +913,9 @@ An implementation conforms to the **Full** level if it satisfies all Core and Ex
 1. All resource identifier fields (`agent_id`, `policy_name`, `prompt_name`, `org_id`) MUST use AGRN naming as specified in Section 7.
 2. The `data_classification` field MUST be populated for all events involving governed content (policy injection, prompt usage, governance proof, and policy violation events).
 3. Implementations SHOULD compute a non-empty `governance_hash` for all events where governed content is available, including lifecycle events where the content is known at the time of the event.
-4. The `metadata` field MUST be a valid JSON-encoded string (defaulting to `"{}"`).
+4. The `annotations` field MUST be a valid JSON object (defaulting to `{}`).
 5. The `ingested_at` field SHOULD be populated by the receiving analytics system.
+6. The `spec_version` field SHOULD be populated.
 
 ---
 
@@ -968,7 +964,7 @@ Implementations that require authentication or non-repudiation SHOULD sign AIGP 
 - **Ed25519** -- for compact signatures and fast verification.
 - **ECDSA with P-256** -- for compatibility with existing PKI infrastructure.
 
-Signed events SHOULD include the signature in an extension field (e.g., `ext_signature`) and the signing key identifier in another (e.g., `ext_key_id`). Key management, certificate issuance, and trust chain establishment are outside the scope of this specification.
+Signed events SHOULD include the signature in the `annotations` field (e.g., `annotations.signature`) and the signing key identifier in another key (e.g., `annotations.key_id`). Key management, certificate issuance, and trust chain establishment are outside the scope of this specification.
 
 ### 14.3 Transport Security
 
@@ -997,7 +993,7 @@ AIGP events MAY contain data that constitutes personally identifiable informatio
 
 - `source_ip` -- may identify an individual or a specific device.
 - `agent_id` -- may be correlated with an individual operator.
-- `metadata` -- may contain arbitrary data including PII.
+- `annotations` -- may contain arbitrary data including PII.
 - `trace_id` -- may be correlated with a specific user session.
 
 ### 15.2 Regulatory Compliance
@@ -1048,7 +1044,7 @@ The schema is authored in JSON Schema Draft 2020-12 and defines:
 - Pattern constraints for `event_type` (`^[A-Z][A-Z0-9_]*$`).
 - Default values for optional fields.
 
-Implementations SHOULD validate produced events against this schema. Implementations MAY extend the schema to support extension fields (Section 5.8) by setting `additionalProperties` to allow fields matching `^ext_[a-z][a-z0-9_]*$`.
+Implementations SHOULD validate produced events against this schema.
 
 The canonical JSON Schema is available in the AIGP repository at [schema/aigp-event.schema.json](../schema/aigp-event.schema.json).
 
@@ -1095,7 +1091,8 @@ The following is a fully annotated AIGP event representing a successful policy i
 
   "ingested_at": "2025-01-15T14:30:01.456Z",
 
-  "metadata": "{\"regulatory_hooks\": [\"FINRA\", \"SEC\"], \"delivery_latency_ms\": 12}"
+  "annotations": {"regulatory_hooks": ["FINRA", "SEC"]},
+  "spec_version": "0.6.0"
 }
 ```
 
@@ -1126,7 +1123,8 @@ The following is a fully annotated AIGP event representing a successful policy i
 | `request_method` | `GET` -- the HTTP method used to request the policy. |
 | `request_path` | The API endpoint that was called to retrieve the policy. |
 | `ingested_at` | Timestamp when the analytics system received this event (1.333 seconds after `event_time`). |
-| `metadata` | JSON string containing domain-specific data: regulatory hooks and delivery latency. |
+| `annotations` | Informational context: regulatory hooks. Not included in governance hash. |
+| `spec_version` | `0.6.0` -- the AIGP specification version the producer implemented. |
 
 ---
 
@@ -1134,6 +1132,7 @@ The following is a fully annotated AIGP event representing a successful policy i
 
 | Version | Date | Changes |
 |---|---|---|
+| 0.6.0 | 2026-02-15 | Resources + Annotations extensibility model. Renames `metadata` field to `annotations` (informational, unhashed context). Removes `ext_` extension field prefix mechanism. Opens `resource_type` from closed enum to open pattern — implementations may define custom resource types. Adds `spec_version` optional field. Adds must-ignore rule for unknown resource types and annotation keys. Adds additive-only minor version guarantee. Rewrites Principle 5 as "Forward-Compatible Extensibility." |
 | 0.5.0 | 2026-02-15 | OpenLineage integration. Adds `"context"` (general pre-execution state) and `"lineage"` (data lineage snapshots) resource types for Merkle tree leaves. New Section 11.8: OpenLineage Data Lineage Integration (context/lineage resources, custom facets, emission granularity, active vs. passive lineage, triple-emit architecture). Custom facet schemas: AIGPGovernanceRunFacet, AIGPResourceInputFacet. Python SDK: `openlineage` module with `build_governance_run_facet()`, `build_resource_input_facets()`, `build_openlineage_run_event()`. Optional `openlineage_callback` on AIGPInstrumentor. AGRN `context.` and `lineage.` prefixes. OTel attributes `aigp.contexts.names`, `aigp.lineages.names`. Backward compatible: existing events unchanged. |
 | 0.4.0 | 2026-02-15 | Merkle tree governance hash. Adds `governance_merkle_tree` optional field. New `hash_type` value `"merkle-sha256"`. Section 8.8 defines leaf construction, tree algorithm, and verification. OTel attribute `aigp.governance.merkle.leaf_count`. Backward compatible: single-resource events unchanged. |
 | 0.3.0 | 2026-02-15 | OpenTelemetry integration. Adds `span_id`, `parent_span_id`, `trace_flags` fields. Adds spec sections 11.4 (OTel Span Correlation), 11.5 (AIGP Semantic Attributes), 11.6 (Baggage Propagation), 11.7 (W3C tracestate Vendor Key). Companion semantic conventions document and reference OTel Collector configuration. |

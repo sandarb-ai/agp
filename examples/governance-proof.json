@@ -25,18 +25,10 @@
   "request_method": "GET",
   "request_path": "/api/policies/trading-limits/content",
   "ingested_at": "2025-02-20T22:10:46.012Z",
-  "metadata": {
+  "annotations": {
+    "regulatory_hooks": ["FINRA", "SEC"],
     "proof_type": "content_delivery",
-    "content_bytes": 4096,
-    "regulatory_hooks": [
-      "FINRA",
-      "SEC"
-    ],
-    "delivery_latency_ms": 9,
-    "recipient_agent": "agent.trading-bot-v2",
-    "proof_chain": [
-      "a3f2b8c1d4e5f67890abcdef1234567890abcdef1234567890abcdef12345678"
-    ],
-    "immutable_log_ref": "s3://finco-governance-logs/2025/02/20/proof-d01ef234.json"
-  }
+    "recipient_agent": "agent.trading-bot-v2"
+  },
+  "spec_version": "0.6.0"
 }

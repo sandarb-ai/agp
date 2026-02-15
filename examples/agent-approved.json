@@ -25,7 +25,7 @@
   "request_method": "POST",
   "request_path": "/api/agents/loan-underwriter-v1/approve",
   "ingested_at": "2025-02-10T11:22:34.012Z",
-  "metadata": {
+  "annotations": {
     "approved_by": "admin@meridian-bank.com",
     "approval_scope": [
       "policy.credit-scoring-rules",

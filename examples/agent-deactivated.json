@@ -25,7 +25,7 @@
   "request_method": "POST",
   "request_path": "/api/agents/claims-processor-v2/deactivate",
   "ingested_at": "2025-03-05T17:45:13.234Z",
-  "metadata": {
+  "annotations": {
     "deactivated_by": "security-ops@shield-insurance.com",
     "violation_count": 3,
     "last_violation": "2025-03-05T16:30:00.000Z",

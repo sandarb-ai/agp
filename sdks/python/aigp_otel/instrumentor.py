@@ -91,7 +91,7 @@ class AIGPInstrumentor:
         self.event_callback = event_callback
         self.openlineage_callback = openlineage_callback
 
-        self._tracer = trace.get_tracer(tracer_name, "0.5.0")
+        self._tracer = trace.get_tracer(tracer_name, "0.6.0")
 
     def get_resource_attributes(self) -> dict[str, str]:
         """
@@ -251,7 +251,7 @@ class AIGPInstrumentor:
         template_rendered: bool = False,
         request_method: str = "",
         request_path: str = "",
-        metadata: Optional[dict[str, Any]] = None,
+        annotations: Optional[dict[str, Any]] = None,
         span: Optional[Span] = None,
     ) -> dict[str, Any]:
         """
@@ -289,7 +289,7 @@ class AIGPInstrumentor:
             template_rendered=template_rendered,
             request_method=request_method,
             request_path=request_path,
-            metadata=metadata,
+            annotations=annotations,
         )
 
         return self._dual_emit(AIGPAttributes.EVENT_INJECT_SUCCESS, aigp_event, span)
@@ -304,7 +304,7 @@ class AIGPInstrumentor:
         violation_type: str = "ACCESS_CONTROL",
         request_method: str = "",
         request_path: str = "",
-        metadata: Optional[dict[str, Any]] = None,
+        annotations: Optional[dict[str, Any]] = None,
         span: Optional[Span] = None,
     ) -> dict[str, Any]:
         """Emit an INJECT_DENIED governance event."""
@@ -329,7 +329,7 @@ class AIGPInstrumentor:
             severity=severity,
             request_method=request_method,
             request_path=request_path,
-            metadata=metadata,
+            annotations=annotations,
         )
 
         return self._dual_emit(AIGPAttributes.EVENT_INJECT_DENIED, aigp_event, span)
@@ -342,7 +342,7 @@ class AIGPInstrumentor:
         data_classification: str = "",
         prompt_id: str = "",
         template_rendered: bool = False,
-        metadata: Optional[dict[str, Any]] = None,
+        annotations: Optional[dict[str, Any]] = None,
         span: Optional[Span] = None,
     ) -> dict[str, Any]:
         """Emit a PROMPT_USED governance event."""
@@ -366,7 +366,7 @@ class AIGPInstrumentor:
             prompt_version=prompt_version,
             data_classification=data_classification,
             template_rendered=template_rendered,
-            metadata=metadata,
+            annotations=annotations,
         )
 
         return self._dual_emit(AIGPAttributes.EVENT_PROMPT_USED, aigp_event, span)
@@ -378,7 +378,7 @@ class AIGPInstrumentor:
         severity: str = "medium",
         prompt_id: str = "",
         violation_type: str = "ACCESS_CONTROL",
-        metadata: Optional[dict[str, Any]] = None,
+        annotations: Optional[dict[str, Any]] = None,
         span: Optional[Span] = None,
     ) -> dict[str, Any]:
         """Emit a PROMPT_DENIED governance event."""
@@ -400,7 +400,7 @@ class AIGPInstrumentor:
             denial_reason=denial_reason,
             violation_type=violation_type,
             severity=severity,
-            metadata=metadata,
+            annotations=annotations,
         )
 
         return self._dual_emit(AIGPAttributes.EVENT_PROMPT_DENIED, aigp_event, span)
@@ -414,7 +414,7 @@ class AIGPInstrumentor:
         policy_name: str = "",
         policy_version: int = 0,
         content: str = "",
-        metadata: Optional[dict[str, Any]] = None,
+        annotations: Optional[dict[str, Any]] = None,
         span: Optional[Span] = None,
     ) -> dict[str, Any]:
         """Emit a POLICY_VIOLATION governance event."""
@@ -439,7 +439,7 @@ class AIGPInstrumentor:
             denial_reason=denial_reason,
             violation_type=violation_type,
             severity=severity,
-            metadata=metadata,
+            annotations=annotations,
         )
 
         return self._dual_emit(AIGPAttributes.EVENT_POLICY_VIOLATION, aigp_event, span)
@@ -450,7 +450,7 @@ class AIGPInstrumentor:
         request_path: str = "",
         content: str = "",
         data_classification: str = "",
-        metadata: Optional[dict[str, Any]] = None,
+        annotations: Optional[dict[str, Any]] = None,
         span: Optional[Span] = None,
     ) -> dict[str, Any]:
         """Emit an A2A_CALL governance event."""
@@ -472,7 +472,7 @@ class AIGPInstrumentor:
             data_classification=data_classification,
             request_method=request_method,
             request_path=request_path,
-            metadata=metadata,
+            annotations=annotations,
         )
 
         return self._dual_emit(AIGPAttributes.EVENT_A2A_CALL, aigp_event, span)
@@ -485,7 +485,7 @@ class AIGPInstrumentor:
         policy_version: int = 0,
         prompt_name: str = "",
         prompt_version: int = 0,
-        metadata: Optional[dict[str, Any]] = None,
+        annotations: Optional[dict[str, Any]] = None,
         span: Optional[Span] = None,
     ) -> dict[str, Any]:
         """Emit a GOVERNANCE_PROOF event (standalone cryptographic attestation)."""
@@ -509,7 +509,7 @@ class AIGPInstrumentor:
             prompt_name=prompt_name,
             prompt_version=prompt_version,
             data_classification=data_classification,
-            metadata=metadata,
+            annotations=annotations,
         )
 
         return self._dual_emit(AIGPAttributes.EVENT_GOVERNANCE_PROOF, aigp_event, span)
@@ -520,7 +520,7 @@ class AIGPInstrumentor:
         content: str,
         data_classification: str = "",
         template_rendered: bool = False,
-        metadata: Optional[dict[str, Any]] = None,
+        annotations: Optional[dict[str, Any]] = None,
         span: Optional[Span] = None,
         resource_contents: Optional[list[tuple[str, str, str]]] = None,
     ) -> dict[str, Any]:
@@ -548,7 +548,7 @@ class AIGPInstrumentor:
 
         Returns:
             AIGP event dict. The primary policy (first in list) is used for the
-            singular AIGP fields. All policies are recorded in metadata.
+            singular AIGP fields. All policies are recorded in annotations.
         """
         if not policies:
             raise ValueError("At least one policy is required")
@@ -584,8 +584,8 @@ class AIGPInstrumentor:
             policy_version=primary.get("version", 0),
             data_classification=data_classification,
             template_rendered=template_rendered,
-            metadata={
-                **(metadata or {}),
+            annotations={
+                **(annotations or {}),
                 "all_policies": [
                     {"name": p["name"], "version": p.get("version", 0)}
                     for p in policies
@@ -638,7 +638,7 @@ class AIGPInstrumentor:
         self,
         resources: list[tuple[str, str, str]],
         data_classification: str = "",
-        metadata: Optional[dict[str, Any]] = None,
+        annotations: Optional[dict[str, Any]] = None,
         span: Optional[Span] = None,
     ) -> dict[str, Any]:
         """
@@ -655,7 +655,7 @@ class AIGPInstrumentor:
                     "context.env-config", "lineage.upstream-orders")
                 content: The governed content string
             data_classification: Data sensitivity level.
-            metadata: Additional metadata.
+            annotations: Informational context (not hashed).
             span: Optional OTel span.
 
         Returns:
@@ -689,8 +689,8 @@ class AIGPInstrumentor:
             policy_name=policy_name,
             prompt_name=prompt_name,
             data_classification=data_classification,
-            metadata={
-                **(metadata or {}),
+            annotations={
+                **(annotations or {}),
                 "all_resources": [
                     {"type": r[0], "name": r[1]} for r in resources
                 ],
