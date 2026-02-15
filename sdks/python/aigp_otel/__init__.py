@@ -37,8 +37,13 @@ from aigp_otel.events import (
 from aigp_otel.attributes import AIGPAttributes
 from aigp_otel.baggage import AIGPBaggage
 from aigp_otel.tracestate import AIGPTraceState
+from aigp_otel.openlineage import (
+    build_governance_run_facet,
+    build_resource_input_facets,
+    build_openlineage_run_event,
+)
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"
 __all__ = [
     "AIGPInstrumentor",
     "create_aigp_event",
@@ -48,4 +53,7 @@ __all__ = [
     "AIGPAttributes",
     "AIGPBaggage",
     "AIGPTraceState",
+    "build_governance_run_facet",
+    "build_resource_input_facets",
+    "build_openlineage_run_event",
 ]

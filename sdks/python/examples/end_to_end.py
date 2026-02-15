@@ -11,6 +11,7 @@ Demonstrates the full dual-emit architecture:
 6. Agent-to-agent call with Baggage propagation
 7. tracestate vendor key for lightweight governance signaling
 8. Merkle tree governance proof for multi-resource verification
+9. OpenLineage triple-emit with context resource
 
 Run:
     pip install opentelemetry-api opentelemetry-sdk
@@ -232,12 +233,77 @@ def main():
                 print(f"    {leaf['resource_type']:8s} {leaf['resource_name']:40s} {leaf['hash'][:16]}...")
 
     # ===========================================================
+    # Scenario 9: OpenLineage Triple-Emit with Context + Lineage Resources
+    # ===========================================================
+    print("\n--- Scenario 9: OpenLineage Triple-Emit with Context + Lineage ---")
+
+    from aigp_otel.openlineage import build_openlineage_run_event
+    from aigp_otel.events import compute_merkle_governance_hash
+
+    # Pre-execution: snapshot upstream data lineage as a lineage resource
+    lineage_snapshot = json.dumps({
+        "datasets": ["orders", "customers", "credit-scores"],
+        "snapshot_time": "2026-02-15T14:00:00Z",
+        "source": "openlineage.finco.data-warehouse",
+    })
+
+    # Pre-execution: capture environment config as a context resource
+    env_config = json.dumps({
+        "env": "production",
+        "region": "us-east-1",
+        "model": "gpt-4",
+    })
+
+    resources = [
+        ("policy", "policy.fair-lending", "Maximum debt-to-income ratio: 43%..."),
+        ("prompt", "prompt.scoring-v3", "You are a credit scoring assistant..."),
+        ("context", "context.env-config", env_config),
+        ("lineage", "lineage.upstream-orders", lineage_snapshot),
+    ]
+
+    root_hash, merkle_tree = compute_merkle_governance_hash(resources)
+
+    # Create the AIGP event
+    from aigp_otel.events import create_aigp_event
+    aigp_event = create_aigp_event(
+        event_type="GOVERNANCE_PROOF",
+        event_category="governance-proof",
+        agent_id="agent.credit-scorer-v2",
+        trace_id="abc123def456abc123def456abc12345",
+        governance_hash=root_hash,
+        hash_type="merkle-sha256" if merkle_tree else "sha256",
+        governance_merkle_tree=merkle_tree,
+        data_classification="confidential",
+    )
+
+    # Build OpenLineage RunEvent with AIGP facets
+    ol_event = build_openlineage_run_event(
+        aigp_event,
+        job_namespace="finco.scoring",
+        job_name="credit-scorer-v2.invoke",
+    )
+
+    print(f"\n  OpenLineage RunEvent:")
+    print(f"    eventType: {ol_event['eventType']}")
+    print(f"    runId:     {ol_event['run']['runId']}")
+    print(f"    job:       {ol_event['job']['namespace']}/{ol_event['job']['name']}")
+    governance = ol_event["run"]["facets"]["aigp_governance"]
+    print(f"    governance hash: {governance['governanceHash'][:16]}... (Merkle root)")
+    print(f"    leaf count:      {governance['leafCount']}")
+    print(f"    enforcement:     {governance.get('enforcementResult', 'N/A')}")
+    print(f"    inputs ({len(ol_event['inputs'])}):")
+    for inp in ol_event["inputs"]:
+        rf = inp["inputFacets"]["aigp_resource"]
+        print(f"      {rf['resourceType']:8s} {rf['resourceName']}")
+
+    # ===========================================================
     # Done
     # ===========================================================
     print("\n=== All scenarios complete ===")
     print("AIGP events went to: compliance_store_callback (simulated Kafka)")
     print("OTel spans went to: ConsoleSpanExporter (simulated observability backend)")
-    print("\nSame data. Two destinations. Two purposes.")
+    print("OpenLineage events built for: Marquez/DataHub (simulated lineage backend)")
+    print("\nSame data. Three destinations. Three purposes.")
 
     provider.shutdown()
 

@@ -5,6 +5,36 @@ All notable changes to the AIGP specification will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-02-15
+
+### Added
+- **OpenLineage integration** for connecting AI governance proof to data lineage (Spec Section 11.8)
+- `"context"` resource type for Merkle tree leaves — general pre-execution context (environment config, runtime params) as governed resources
+- `"lineage"` resource type for Merkle tree leaves — data lineage snapshots (upstream dataset provenance, DAG state) as governed resources
+- AGRN `context.` prefix for context resources (e.g., `context.env-config`)
+- AGRN `lineage.` prefix for lineage resources (e.g., `lineage.upstream-orders`)
+- Custom facet schemas: `AIGPGovernanceRunFacet` (run facet), `AIGPResourceInputFacet` (input dataset facet)
+- Python SDK: `openlineage` module with `build_governance_run_facet()`, `build_resource_input_facets()`, `build_openlineage_run_event()`
+- Python SDK: `openlineage_callback` parameter on `AIGPInstrumentor` for optional triple-emit
+- OTel semantic attribute: `aigp.contexts.names` — array-valued attribute for context resources
+- OTel semantic attribute: `aigp.lineages.names` — array-valued attribute for lineage resources
+- OTel semantic conventions Section 3.7: Context and Lineage Resource Attributes
+- Spec Section 11.8: OpenLineage Data Lineage Integration (context and lineage resources, custom facets, emission granularity, active vs. passive lineage, triple-emit architecture)
+- OpenLineage semantic conventions document (`integrations/openlineage/semantic-conventions.md`)
+- OpenLineage example RunEvent with AIGP governance facets
+- OpenLineage test suite (`tests/test_openlineage.py`)
+- Context and lineage resource type tests in `test_merkle.py`
+- End-to-end example Scenario 9: OpenLineage triple-emit with context + lineage resources
+
+### Changed
+- `resource_type` enum now includes `"context"` and `"lineage"` (schema, spec, Python SDK)
+- `compute_leaf_hash()` accepts `"context"` and `"lineage"` as valid resource_types
+- `multi_resource_governance_proof()` docstring updated for `"context"` and `"lineage"` types
+- `_dual_emit()` renamed from "compliance store" to "AI governance store" in comments
+- AGRN regex updated to include `context` and `lineage` prefixes
+- Spec version bumped to 0.5.0
+- Backward compatible: existing events and hashes unchanged
+
 ## [0.4.0] - 2026-02-15
 
 ### Added

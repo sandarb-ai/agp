@@ -4,15 +4,15 @@ build-backend = "hatchling.build"
 
 [project]
 name = "aigp-otel"
-version = "0.3.0"
-description = "AIGP-OpenTelemetry bridge: governance-proof semantic payload meets distributed tracing"
+version = "0.5.0"
+description = "AIGP-OpenTelemetry bridge: governance-proof semantic payload meets distributed tracing and data lineage"
 readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.10"
 authors = [
     { name = "AIGP Community" },
 ]
-keywords = ["aigp", "opentelemetry", "governance", "audit", "ai-agents", "tracing"]
+keywords = ["aigp", "opentelemetry", "openlineage", "governance", "audit", "ai-agents", "tracing", "lineage"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",

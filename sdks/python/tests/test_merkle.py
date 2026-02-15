@@ -11,6 +11,7 @@ Tests the AIGP Merkle tree hash computation (Spec Section 8.8):
 
 import hashlib
 import json
+import re
 
 import pytest
 
@@ -236,7 +237,7 @@ class TestComputeMerkleGovernanceHash:
             assert "resource_type" in leaf
             assert "resource_name" in leaf
             assert "hash" in leaf
-            assert leaf["resource_type"] in ("policy", "prompt", "tool")
+            assert leaf["resource_type"] in ("policy", "prompt", "tool", "context", "lineage")
             assert len(leaf["hash"]) == 64
 
     def test_different_resource_sets_produce_different_roots(self):
@@ -346,3 +347,109 @@ class TestMerkleInEvent:
         )
         assert event["governance_hash"] == root
         assert len(event["governance_hash"]) == 64
+
+
+# ===================================================================
+# Context Resource Type Tests (v0.5.0)
+# ===================================================================
+
+class TestContextResourceType:
+    """Tests for the 'context' resource type in Merkle tree governance."""
+
+    def test_compute_leaf_hash_context_type(self):
+        """context is a valid resource_type for leaf hash computation."""
+        result = compute_leaf_hash(
+            resource_type="context",
+            resource_name="context.upstream-lineage",
+            content='{"datasets": ["orders", "customers"], "snapshot_time": "2026-02-15T10:00:00Z"}',
+        )
+        assert len(result) == 64
+        assert re.match(r"^[a-f0-9]{64}$", result)
+
+    def test_context_domain_separation(self):
+        """A context leaf and other types with identical content produce different hashes."""
+        content = "identical content for testing domain separation"
+        context_hash = compute_leaf_hash("context", "context.test", content)
+        policy_hash = compute_leaf_hash("policy", "policy.test", content)
+        prompt_hash = compute_leaf_hash("prompt", "prompt.test", content)
+        tool_hash = compute_leaf_hash("tool", "tool.test", content)
+        lineage_hash = compute_leaf_hash("lineage", "lineage.test", content)
+
+        # All five types must produce different hashes
+        all_hashes = {context_hash, policy_hash, prompt_hash, tool_hash, lineage_hash}
+        assert len(all_hashes) == 5
+
+    def test_merkle_tree_with_context_leaf(self):
+        """Context resources participate in Merkle tree alongside policies/prompts/tools."""
+        resources = [
+            ("policy", "policy.trading-limits", "Max position: $10M"),
+            ("prompt", "prompt.support-v3", "You are a helpful assistant"),
+            ("context", "context.upstream-lineage", '{"datasets": ["orders"]}'),
+        ]
+        root_hash, merkle_tree = compute_merkle_governance_hash(resources)
+        assert len(root_hash) == 64
+        assert merkle_tree is not None
+        assert merkle_tree["leaf_count"] == 3
+        # Verify all three resource types appear in leaves
+        leaf_types = {leaf["resource_type"] for leaf in merkle_tree["leaves"]}
+        assert leaf_types == {"policy", "prompt", "context"}
+
+    def test_invalid_resource_type_still_rejected(self):
+        """Unknown resource types are still rejected."""
+        with pytest.raises(ValueError, match="Invalid resource_type"):
+            compute_leaf_hash("dataset", "dataset.test", "content")
+        with pytest.raises(ValueError, match="Invalid resource_type"):
+            compute_leaf_hash("agent", "agent.bot", "content")
+
+
+# ===================================================================
+# Lineage Resource Type Tests (v0.5.0)
+# ===================================================================
+
+class TestLineageResourceType:
+    """Tests for the 'lineage' resource type in Merkle tree governance."""
+
+    def test_compute_leaf_hash_lineage_type(self):
+        """lineage is a valid resource_type for leaf hash computation."""
+        result = compute_leaf_hash(
+            resource_type="lineage",
+            resource_name="lineage.upstream-orders",
+            content='{"datasets": ["orders", "customers"], "snapshot_time": "2026-02-15T10:00:00Z"}',
+        )
+        assert len(result) == 64
+        assert re.match(r"^[a-f0-9]{64}$", result)
+
+    def test_lineage_domain_separation(self):
+        """A lineage leaf and other types with identical content produce different hashes."""
+        content = "identical content for testing domain separation"
+        lineage_hash = compute_leaf_hash("lineage", "lineage.test", content)
+        context_hash = compute_leaf_hash("context", "context.test", content)
+        policy_hash = compute_leaf_hash("policy", "policy.test", content)
+        prompt_hash = compute_leaf_hash("prompt", "prompt.test", content)
+        tool_hash = compute_leaf_hash("tool", "tool.test", content)
+
+        # All five types must produce different hashes
+        all_hashes = {lineage_hash, context_hash, policy_hash, prompt_hash, tool_hash}
+        assert len(all_hashes) == 5
+
+    def test_merkle_tree_with_lineage_leaf(self):
+        """Lineage resources participate in Merkle tree alongside other types."""
+        resources = [
+            ("policy", "policy.trading-limits", "Max position: $10M"),
+            ("prompt", "prompt.support-v3", "You are a helpful assistant"),
+            ("context", "context.env-config", '{"env": "production"}'),
+            ("lineage", "lineage.upstream-orders", '{"datasets": ["orders"]}'),
+        ]
+        root_hash, merkle_tree = compute_merkle_governance_hash(resources)
+        assert len(root_hash) == 64
+        assert merkle_tree is not None
+        assert merkle_tree["leaf_count"] == 4
+        leaf_types = {leaf["resource_type"] for leaf in merkle_tree["leaves"]}
+        assert leaf_types == {"policy", "prompt", "context", "lineage"}
+
+    def test_invalid_resource_type_still_rejected(self):
+        """Unknown resource types are still rejected even with lineage added."""
+        with pytest.raises(ValueError, match="Invalid resource_type"):
+            compute_leaf_hash("dataset", "dataset.test", "content")
+        with pytest.raises(ValueError, match="Invalid resource_type"):
+            compute_leaf_hash("model", "model.gpt-4", "content")

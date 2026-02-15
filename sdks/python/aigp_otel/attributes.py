@@ -57,6 +57,8 @@ class AIGPAttributes:
     PROMPTS_NAMES = "aigp.prompts.names"
     PROMPTS_VERSIONS = "aigp.prompts.versions"
     TOOLS_NAMES = "aigp.tools.names"
+    CONTEXTS_NAMES = "aigp.contexts.names"
+    LINEAGES_NAMES = "aigp.lineages.names"
 
     # -------------------------------------------------------
     # Span Attributes: Merkle Tree Governance

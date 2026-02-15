@@ -1,9 +1,10 @@
 # AI Governance Proof (AIGP)&trade;
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
-[![Spec](https://img.shields.io/badge/Spec-v0.4.0-violet.svg)](./spec/aigp-spec.md)
+[![Spec](https://img.shields.io/badge/Spec-v0.5.0-violet.svg)](./spec/aigp-spec.md)
 [![Schema](https://img.shields.io/badge/JSON_Schema-valid-green.svg)](./schema/aigp-event.schema.json)
 [![OTel](https://img.shields.io/badge/OpenTelemetry-compatible-orange.svg)](./integrations/opentelemetry/semantic-conventions.md)
+[![OpenLineage](https://img.shields.io/badge/OpenLineage-compatible-blueviolet.svg)](./integrations/openlineage/semantic-conventions.md)
 
 **An open specification for capturing cryptographic proof of every AI agent governance action.**
 
@@ -21,6 +22,7 @@ AIGP is not a product feature — it's a proposal for a common language that any
 - [Instrumentation Conventions](#instrumentation-conventions)
 - [Example Event](#example-event)
 - [OpenTelemetry Integration](#opentelemetry-integration)
+- [OpenLineage Integration](#openlineage-integration)
 - [Reference Implementation](#reference-implementation)
 - [Contributing](#contributing)
 
@@ -239,6 +241,29 @@ event = instrumentor.inject_success(
 ```
 
 > Full details: [Spec Section 11.4-11.7](./spec/aigp-spec.md#114-opentelemetry-span-correlation)
+
+---
+
+## OpenLineage Integration
+
+AIGP connects AI governance proof to data lineage via OpenLineage custom facets. The `"lineage"` resource type enables pre-execution data lineage snapshots to be hashed as Merkle leaves — providing tamper-proof evidence of what data context the agent was operating on. The `"context"` resource type captures general pre-execution state (env config, runtime params).
+
+| Layer | Standard | What It Shows | Backend |
+|---|---|---|---|
+| **AI Governance** | AIGP | Cryptographic proof, enforcement, audit trail, AI governance evidence | AIGP is the standard. Where you store the proof is your business. |
+| **Observability** | OTel | Agent latency, errors, trace topology, AI governance attributes | Datadog / Grafana |
+| **Lineage** | OpenLineage | What data flowed where, governed by what, produced what | Marquez / DataHub |
+
+Three open standards. Three orthogonal concerns. One `trace_id`.
+
+| Resource | Description |
+|----------|-------------|
+| [Semantic Conventions](./integrations/openlineage/semantic-conventions.md) | Facet mapping guide, correlation patterns, emission granularity |
+| [Facet Schemas](./integrations/openlineage/facets/) | `AIGPGovernanceRunFacet`, `AIGPResourceInputFacet` JSON Schemas |
+| [Python SDK](./sdks/python/) | `build_governance_run_facet()`, `build_openlineage_run_event()` (zero OL dependency) |
+| [Example RunEvent](./integrations/openlineage/examples/openlineage-governance-run.json) | Complete OpenLineage RunEvent with AIGP governance facets |
+
+> Full details: [Spec Section 11.8](./spec/aigp-spec.md#118-openlineage-data-lineage-integration)
 
 ---
 

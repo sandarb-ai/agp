@@ -66,6 +66,7 @@ Future versions of this specification may introduce breaking changes. Implemente
   - [11.5 AIGP Semantic Attributes for OpenTelemetry](#115-aigp-semantic-attributes-for-opentelemetry)
   - [11.6 Baggage Propagation](#116-baggage-propagation)
   - [11.7 W3C `tracestate` Vendor Key](#117-w3c-tracestate-vendor-key)
+  - [11.8 OpenLineage Data Lineage Integration](#118-openlineage-data-lineage-integration)
 - [12. Conformance Levels](#12-conformance-levels)
 - [13. Transport Bindings](#13-transport-bindings)
   - [13.1 HTTP](#131-http)
@@ -153,7 +154,7 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 : A cryptographic digest (by default SHA-256) computed over the governed content at the time of an action. The governance hash provides tamper evidence: if the content changes after hash computation, the hash will no longer match the content.
 
 **AGRN (Agent Governance Resource Name)**
-: A typed, kebab-case identifier for a governed resource. The format is `type.kebab-name`, where `type` is one of `agent`, `policy`, `prompt`, or `org`. AGRNs provide globally unique, human-readable, self-describing identifiers for use in AIGP events.
+: A typed, kebab-case identifier for a governed resource. The format is `type.kebab-name`, where `type` is one of `agent`, `policy`, `prompt`, `context`, `lineage`, or `org`. AGRNs provide globally unique, human-readable, self-describing identifiers for use in AIGP events.
 
 **Governance Action**
 : An operation that is subject to governance controls, such as delivering a policy to an agent, using a prompt, registering an agent, or detecting a policy violation.
@@ -166,6 +167,15 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 
 **Prompt**
 : A governed template or instruction set used to direct an agent's behavior. Prompts are versioned and subject to approval workflows.
+
+**Context**
+: A general-purpose pre-execution resource representing environment configuration, runtime state, or any other input the agent was operating on. Context resources are hashed as Merkle leaves for tamper-proof evidence.
+
+**Lineage**
+: A data lineage snapshot capturing upstream dataset provenance, DAG state, or OpenLineage graph context. Lineage resources provide cryptographic evidence of what data lineage the agent was operating on at the time of the governance action.
+
+**Context**
+: A governed snapshot of pre-execution context provided to an agent before invocation. A context resource captures the state of upstream data lineage, environment configuration, or any other input that the agent was operating on. Context resources are versioned by their content hash and participate in the Merkle tree governance hash alongside policies, prompts, and tools.
 
 **Trace**
 : A correlation identifier (`trace_id`) that links all AIGP events arising from a single user request, agent execution, or governance workflow. A single trace enables end-to-end reconstruction of the governance path.
@@ -471,6 +481,8 @@ Where:
 | Agent | `agent.` | `agent.trading-bot-v2` |
 | Policy | `policy.` | `policy.eu-refund-policy` |
 | Prompt | `prompt.` | `prompt.customer-support-v3` |
+| Context | `context.` | `context.env-config` |
+| Lineage | `lineage.` | `lineage.upstream-orders` |
 | Organization | `org.` | `org.finco` |
 
 ### 7.4 Naming Rules
@@ -480,8 +492,8 @@ Where:
 3. The `kebab-name` MUST NOT begin or end with a hyphen.
 4. The `kebab-name` MUST NOT contain consecutive hyphens (`--`).
 5. The `kebab-name` MUST be at least one character long.
-6. The type prefix (`agent.`, `policy.`, `prompt.`, `org.`) MUST be included as part of the AGRN and makes the resource self-describing in any AIGP event or log line.
-7. The complete AGRN MUST match the regular expression: `^(agent|policy|prompt|org)\.[a-z][a-z0-9]*(-[a-z0-9]+)*$`.
+6. The type prefix (`agent.`, `policy.`, `prompt.`, `context.`, `lineage.`, `org.`) MUST be included as part of the AGRN and makes the resource self-describing in any AIGP event or log line.
+7. The complete AGRN MUST match the regular expression: `^(agent|policy|prompt|context|lineage|org)\.[a-z][a-z0-9]*(-[a-z0-9]+)*$`.
 
 ### 7.5 Usage
 
@@ -547,8 +559,8 @@ leaf_hash = SHA-256(UTF-8(resource_type + ":" + resource_name + ":" + content))
 ```
 
 Where:
-- `resource_type` MUST be one of `"policy"`, `"prompt"`, or `"tool"`.
-- `resource_name` is the AGRN-format name (e.g., `"policy.trading-limits"`).
+- `resource_type` MUST be one of `"policy"`, `"prompt"`, `"tool"`, `"context"`, or `"lineage"`.
+- `resource_name` is the AGRN-format name (e.g., `"policy.trading-limits"`, `"context.env-config"`, `"lineage.upstream-orders"`).
 - `content` is the governed content string for that resource.
 - The `":"` separator is the literal colon character (U+003A).
 
@@ -614,7 +626,7 @@ When `hash_type` is `"merkle-sha256"`, the event SHOULD include a top-level `gov
 - `leaves` — An array of leaf objects sorted by `hash` value (lexicographic ascending). This is the same sort order used during tree construction (Section 8.8.3 step 2).
 
 Each leaf object MUST contain:
-- `resource_type` — One of `"policy"`, `"prompt"`, or `"tool"`.
+- `resource_type` — One of `"policy"`, `"prompt"`, `"tool"`, `"context"`, or `"lineage"`.
 - `resource_name` — AGRN-format resource name.
 - `hash` — The 64-character lowercase hexadecimal leaf hash computed per Section 8.8.2.
 
@@ -808,6 +820,63 @@ tracestate: aigp=cls:con;pol:policy.trading-limits;ver:4,dd=s:1
 - The `tracestate` vendor key is OPTIONAL. Implementations that do not use it MUST NOT remove or modify the `aigp` vendor entry if it is already present in an incoming `tracestate` header.
 - Unlike Baggage, `tracestate` survives through proxies, load balancers, and service meshes that do not understand OTel Baggage. It provides a minimum viable governance context that travels with every traced request.
 - Implementations MUST NOT place sensitive data (hashes, denial reasons, raw content) in `tracestate` values.
+
+### 11.8 OpenLineage Data Lineage Integration
+
+AIGP events capture AI governance actions. OpenLineage events capture data lineage (what data flowed where, transformed by what). When both systems are present, they SHOULD be correlated so that governance proof can be linked to the data lineage context that the agent was operating on.
+
+#### 11.8.1 Context and Lineage Resources
+
+Two resource types enable pre-execution inputs to participate in the Merkle tree governance hash:
+
+**Context resources** (`"context"`) capture general-purpose pre-execution state: environment configuration, runtime parameters, or any agent-specific input. Context resources SHOULD use the AGRN format `context.<kebab-name>` (e.g., `context.env-config`, `context.runtime-params`).
+
+**Lineage resources** (`"lineage"`) capture data lineage snapshots: upstream dataset provenance, DAG state, or OpenLineage graph context. Lineage resources SHOULD use the AGRN format `lineage.<kebab-name>` (e.g., `lineage.upstream-orders`, `lineage.credit-scores`). The content of a lineage resource is typically a JSON-serialized snapshot of the upstream data lineage at the time of the governance action, providing tamper-proof evidence of what data context the agent was operating on.
+
+The content of both resource types SHOULD be JSON-serialized. Implementations MUST compute the leaf hash over this serialized content per Section 8.8.2.
+
+#### 11.8.2 Custom Facets
+
+AIGP defines two OpenLineage custom facets for attaching AI governance metadata to OpenLineage RunEvents:
+
+- **AIGPGovernanceRunFacet** (run facet): Captures the aggregate governance proof (hash, hash type, leaf count, agent ID, trace ID, enforcement result, data classification). Attached to `run.facets.aigp_governance`.
+- **AIGPResourceInputFacet** (input dataset facet): Captures per-resource governance metadata (resource type, name, version, leaf hash). Attached to `inputs[].inputFacets.aigp_resource`.
+
+The facet schemas are maintained at `integrations/openlineage/facets/`.
+
+Standard OpenLineage backends will display governed resources as generic datasets. For native AI governance rendering, implementations SHOULD use the `aigp_resource.resourceType` facet to distinguish policies, prompts, tools, contexts, and lineage resources.
+
+#### 11.8.3 Correlation
+
+The `trace_id` field serves as the correlation key across all three systems:
+
+- AIGP event: `trace_id` field
+- OpenTelemetry span: `trace_id` in span context
+- OpenLineage RunEvent: `run.facets.aigp_governance.traceId`
+
+Implementations SHOULD use the same `trace_id` value across all three records to enable end-to-end correlation.
+
+#### 11.8.4 Emission Granularity
+
+Implementations SHOULD emit at most one OpenLineage RunEvent per governance session or task, using `trace_id` as the `runId`. Individual agent steps within a session SHOULD be tracked as OTel spans, not as separate OpenLineage runs.
+
+OpenLineage was designed for discrete Job Runs in a DAG (an Airflow task, a Spark job, a dbt model) with clear start/end boundaries. AI agents are conversational and iterative. Emitting per-step runs overwhelms lineage backends and produces unreadable graphs.
+
+#### 11.8.5 Active vs. Passive Lineage
+
+OpenLineage integration is PASSIVE (eventually consistent). It MUST NOT be used for real-time enforcement decisions. Enforcement MUST use the AIGP + OTel path (Sections 11.4--11.7).
+
+When pre-execution lineage context is needed for governance, implementations SHOULD snapshot the lineage, hash it as a `"context"` resource, and include it in the Merkle tree -- making it an active governed artifact rather than relying on passive lineage queries.
+
+#### 11.8.6 Triple-Emit Architecture
+
+Implementations MAY produce three outputs for a single governance action:
+
+1. **AIGP event** (JSON) --> AI Governance store (cryptographic proof, audit trail)
+2. **OTel span event** --> Observability backend (latency, errors, traces)
+3. **OpenLineage RunEvent** with AIGP facets --> Lineage backend (data flow, governance context)
+
+Triple-emit is OPTIONAL. Implementations MAY use any subset (AIGP only, AIGP + OTel, AIGP + OpenLineage, or all three).
 
 ---
 
@@ -1058,6 +1127,7 @@ The following is a fully annotated AIGP event representing a successful policy i
 
 | Version | Date | Changes |
 |---|---|---|
+| 0.5.0 | 2026-02-15 | OpenLineage integration. Adds `"context"` (general pre-execution state) and `"lineage"` (data lineage snapshots) resource types for Merkle tree leaves. New Section 11.8: OpenLineage Data Lineage Integration (context/lineage resources, custom facets, emission granularity, active vs. passive lineage, triple-emit architecture). Custom facet schemas: AIGPGovernanceRunFacet, AIGPResourceInputFacet. Python SDK: `openlineage` module with `build_governance_run_facet()`, `build_resource_input_facets()`, `build_openlineage_run_event()`. Optional `openlineage_callback` on AIGPInstrumentor. AGRN `context.` and `lineage.` prefixes. OTel attributes `aigp.contexts.names`, `aigp.lineages.names`. Backward compatible: existing events unchanged. |
 | 0.4.0 | 2026-02-15 | Merkle tree governance hash. Adds `governance_merkle_tree` optional field. New `hash_type` value `"merkle-sha256"`. Section 8.8 defines leaf construction, tree algorithm, and verification. OTel attribute `aigp.governance.merkle.leaf_count`. Backward compatible: single-resource events unchanged. |
 | 0.3.0 | 2026-02-15 | OpenTelemetry integration. Adds `span_id`, `parent_span_id`, `trace_flags` fields. Adds spec sections 11.4 (OTel Span Correlation), 11.5 (AIGP Semantic Attributes), 11.6 (Baggage Propagation), 11.7 (W3C tracestate Vendor Key). Companion semantic conventions document and reference OTel Collector configuration. |
 | 0.2.1 | 2026-02-09 | Adds `policy_version` and `prompt_version` fields. Removes `version_id` and `version_number`. |
@@ -1084,4 +1154,6 @@ The following is a fully annotated AIGP event representing a successful policy i
 - **[W3C-TraceContext]** W3C, "Trace Context", W3C Recommendation, https://www.w3.org/TR/trace-context/
 - **[OpenTelemetry-Baggage]** OpenTelemetry Specification, "Baggage", https://opentelemetry.io/docs/concepts/signals/baggage/
 - **[FIPS-180-4]** National Institute of Standards and Technology, "Secure Hash Standard (SHS)", FIPS PUB 180-4, August 2015. https://csrc.nist.gov/publications/detail/fips/180/4/final
+- **[OpenLineage]** OpenLineage Project, "OpenLineage Specification v2-0-2", Linux Foundation AI & Data. https://openlineage.io/
+- **[Marquez]** The Marquez Project, "Marquez: Open Source Metadata Service for Data Lineage". https://marquezproject.ai/
 - **[Sandarb]** Sandarb -- Reference implementation of the AIGP specification. https://sandarb.ai

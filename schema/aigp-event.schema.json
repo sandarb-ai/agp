@@ -243,13 +243,13 @@
             "properties": {
               "resource_type": {
                 "type": "string",
-                "enum": ["policy", "prompt", "tool"],
+                "enum": ["policy", "prompt", "tool", "context", "lineage"],
                 "description": "Type of governed resource."
               },
               "resource_name": {
                 "type": "string",
                 "description": "AGRN-format name of the governed resource.",
-                "examples": ["policy.trading-limits", "prompt.customer-support-v3", "tool.order-lookup"]
+                "examples": ["policy.trading-limits", "prompt.customer-support-v3", "tool.order-lookup", "context.upstream-lineage", "lineage.upstream-orders"]
               },
               "hash": {
                 "type": "string",

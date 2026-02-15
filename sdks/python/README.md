@@ -178,13 +178,48 @@ context = AIGPTraceState.extract_from_tracestate(tracestate)
 # {'data_classification': 'confidential', 'policy_name': 'policy.trading-limits', ...}
 ```
 
+### OpenLineage Facet Builder
+
+```python
+from aigp_otel.openlineage import build_openlineage_run_event
+from aigp_otel.events import compute_merkle_governance_hash, create_aigp_event
+
+# Context + lineage resources as governed inputs
+resources = [
+    ("policy", "policy.fair-lending", policy_content),
+    ("prompt", "prompt.scoring-v3", prompt_content),
+    ("context", "context.env-config", env_config_json),
+    ("lineage", "lineage.upstream-orders", lineage_snapshot_json),
+]
+root, tree = compute_merkle_governance_hash(resources)
+
+aigp_event = create_aigp_event(
+    event_type="GOVERNANCE_PROOF",
+    event_category="governance-proof",
+    agent_id="agent.credit-scorer-v2",
+    trace_id="abc123...",
+    governance_hash=root,
+    hash_type="merkle-sha256",
+    governance_merkle_tree=tree,
+)
+
+# Build OpenLineage RunEvent (zero OL dependency)
+ol_event = build_openlineage_run_event(
+    aigp_event,
+    job_namespace="finco.scoring",
+    job_name="credit-scorer-v2.invoke",
+)
+# Send to Marquez, DataHub, or any OpenLineage backend
+```
+
 ## Modules
 
 | Module | Purpose |
 |--------|---------|
-| `aigp_otel.instrumentor` | Core dual-emit bridge (`AIGPInstrumentor`) |
+| `aigp_otel.instrumentor` | Core triple-emit bridge (`AIGPInstrumentor`) |
 | `aigp_otel.attributes` | `aigp.*` semantic attribute constants |
 | `aigp_otel.events` | AIGP event creation, hash computation, and Merkle tree |
+| `aigp_otel.openlineage` | OpenLineage facet builder (zero OL dependency) |
 | `aigp_otel.baggage` | OTel Baggage propagation for A2A calls |
 | `aigp_otel.tracestate` | W3C tracestate vendor key encode/decode |
 

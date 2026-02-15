@@ -63,6 +63,7 @@ class AIGPInstrumentor:
         org_name: str = "",
         tracer_name: str = "aigp",
         event_callback: Optional[Callable[[dict[str, Any]], None]] = None,
+        openlineage_callback: Optional[Callable[[dict[str, Any]], None]] = None,
     ):
         """
         Initialize the AIGP instrumentor.
@@ -74,8 +75,13 @@ class AIGPInstrumentor:
             org_name: Human-readable organization name.
             tracer_name: OTel tracer name for AIGP spans.
             event_callback: Optional callback invoked with each AIGP event dict.
-                           Use this to send AIGP events to your compliance store
+                           Use this to send AIGP events to your AI governance store
                            (Kafka, HTTP endpoint, etc.).
+            openlineage_callback: Optional callback invoked with an
+                           AIGPGovernanceRunFacet dict for each governance event.
+                           Use this to send governance facets to your lineage
+                           backend (Marquez, DataHub, etc.).  Emit at most one
+                           OpenLineage RunEvent per governance session/task.
         """
         self.agent_id = agent_id
         self.agent_name = agent_name
@@ -83,8 +89,9 @@ class AIGPInstrumentor:
         self.org_name = org_name
         self.tracer_name = tracer_name
         self.event_callback = event_callback
+        self.openlineage_callback = openlineage_callback
 
-        self._tracer = trace.get_tracer(tracer_name, "0.4.0")
+        self._tracer = trace.get_tracer(tracer_name, "0.5.0")
 
     def get_resource_attributes(self) -> dict[str, str]:
         """
@@ -212,12 +219,21 @@ class AIGPInstrumentor:
             if severity in ("critical", "high"):
                 span.set_status(StatusCode.ERROR, f"AIGP: {event_type}")
 
-        # Emit to compliance store
+        # Emit to AI governance store
         if self.event_callback:
             try:
                 self.event_callback(aigp_event)
             except Exception as e:
                 logger.error(f"AIGP event callback failed: {e}")
+
+        # Emit to lineage backend (optional triple-emit)
+        if self.openlineage_callback:
+            try:
+                from aigp_otel.openlineage import build_governance_run_facet
+                ol_facet = build_governance_run_facet(aigp_event)
+                self.openlineage_callback(ol_facet)
+            except Exception as e:
+                logger.error(f"AIGP OpenLineage callback failed: {e}")
 
         return aigp_event
 
@@ -600,12 +616,21 @@ class AIGPInstrumentor:
 
         span.add_event(AIGPAttributes.EVENT_INJECT_SUCCESS, attributes=attrs)
 
-        # Emit to compliance store
+        # Emit to AI governance store
         if self.event_callback:
             try:
                 self.event_callback(aigp_event)
             except Exception as e:
                 logger.error(f"AIGP event callback failed: {e}")
+
+        # Emit to lineage backend (optional triple-emit)
+        if self.openlineage_callback:
+            try:
+                from aigp_otel.openlineage import build_governance_run_facet
+                ol_facet = build_governance_run_facet(aigp_event)
+                self.openlineage_callback(ol_facet)
+            except Exception as e:
+                logger.error(f"AIGP OpenLineage callback failed: {e}")
 
         return aigp_event
 
@@ -625,8 +650,9 @@ class AIGPInstrumentor:
 
         Args:
             resources: List of (resource_type, resource_name, content) tuples.
-                resource_type: "policy", "prompt", or "tool"
-                resource_name: AGRN name (e.g., "policy.trading-limits")
+                resource_type: "policy", "prompt", "tool", "context", or "lineage"
+                resource_name: AGRN name (e.g., "policy.trading-limits",
+                    "context.env-config", "lineage.upstream-orders")
                 content: The governed content string
             data_classification: Data sensitivity level.
             metadata: Additional metadata.

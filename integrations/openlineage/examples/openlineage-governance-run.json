@@ -1,0 +1,97 @@
+{
+  "eventType": "COMPLETE",
+  "eventTime": "2026-02-15T14:30:00.123Z",
+  "producer": "https://github.com/sandarb-ai/aigp",
+  "schemaURL": "https://openlineage.io/spec/2-0-2/OpenLineage.json#/$defs/RunEvent",
+  "run": {
+    "runId": "4bf92f3577b34da6a3ce929d0e0e4736",
+    "facets": {
+      "aigp_governance": {
+        "_producer": "https://github.com/sandarb-ai/aigp",
+        "_schemaURL": "https://github.com/sandarb-ai/aigp/blob/v0.5.0/integrations/openlineage/facets/AIGPGovernanceRunFacet.json",
+        "governanceHash": "8dd4648db4f94db951f83bb70fa7b575533912f4fd3219d161384df2b8d523ec",
+        "hashType": "merkle-sha256",
+        "leafCount": 5,
+        "agentId": "agent.credit-scorer-v2",
+        "traceId": "4bf92f3577b34da6a3ce929d0e0e4736",
+        "enforcementResult": "allowed",
+        "dataClassification": "confidential",
+        "specVersion": "0.5.0"
+      }
+    }
+  },
+  "job": {
+    "namespace": "finco.scoring",
+    "name": "credit-scorer-v2.invoke"
+  },
+  "inputs": [
+    {
+      "namespace": "finco.scoring",
+      "name": "policy.fair-lending",
+      "inputFacets": {
+        "aigp_resource": {
+          "_producer": "https://github.com/sandarb-ai/aigp",
+          "_schemaURL": "https://github.com/sandarb-ai/aigp/blob/v0.5.0/integrations/openlineage/facets/AIGPResourceInputFacet.json",
+          "resourceType": "policy",
+          "resourceName": "policy.fair-lending",
+          "resourceVersion": 4,
+          "leafHash": "2a7b9c1d4e5f67890abcdef1234567890abcdef1234567890abcdef12345678"
+        }
+      }
+    },
+    {
+      "namespace": "finco.scoring",
+      "name": "prompt.scoring-v3",
+      "inputFacets": {
+        "aigp_resource": {
+          "_producer": "https://github.com/sandarb-ai/aigp",
+          "_schemaURL": "https://github.com/sandarb-ai/aigp/blob/v0.5.0/integrations/openlineage/facets/AIGPResourceInputFacet.json",
+          "resourceType": "prompt",
+          "resourceName": "prompt.scoring-v3",
+          "resourceVersion": 3,
+          "leafHash": "5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e"
+        }
+      }
+    },
+    {
+      "namespace": "finco.scoring",
+      "name": "tool.equifax-api",
+      "inputFacets": {
+        "aigp_resource": {
+          "_producer": "https://github.com/sandarb-ai/aigp",
+          "_schemaURL": "https://github.com/sandarb-ai/aigp/blob/v0.5.0/integrations/openlineage/facets/AIGPResourceInputFacet.json",
+          "resourceType": "tool",
+          "resourceName": "tool.equifax-api",
+          "leafHash": "9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c"
+        }
+      }
+    },
+    {
+      "namespace": "finco.scoring",
+      "name": "context.env-config",
+      "inputFacets": {
+        "aigp_resource": {
+          "_producer": "https://github.com/sandarb-ai/aigp",
+          "_schemaURL": "https://github.com/sandarb-ai/aigp/blob/v0.5.0/integrations/openlineage/facets/AIGPResourceInputFacet.json",
+          "resourceType": "context",
+          "resourceName": "context.env-config",
+          "leafHash": "d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1"
+        }
+      }
+    },
+    {
+      "namespace": "finco.scoring",
+      "name": "lineage.upstream-orders",
+      "inputFacets": {
+        "aigp_resource": {
+          "_producer": "https://github.com/sandarb-ai/aigp",
+          "_schemaURL": "https://github.com/sandarb-ai/aigp/blob/v0.5.0/integrations/openlineage/facets/AIGPResourceInputFacet.json",
+          "resourceType": "lineage",
+          "resourceName": "lineage.upstream-orders",
+          "leafHash": "e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2"
+        }
+      }
+    }
+  ],
+  "outputs": []
+}

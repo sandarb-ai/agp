@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/sandarb-ai/aigp/blob/v0.5.0/integrations/openlineage/facets/AIGPGovernanceRunFacet.json",
+  "$defs": {
+    "AIGPGovernanceRunFacet": {
+      "allOf": [
+        {
+          "$ref": "https://openlineage.io/spec/2-0-2/OpenLineage.json#/$defs/RunFacet"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "governanceHash": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$",
+              "description": "SHA-256 governance hash (flat or Merkle root) per AIGP Spec Section 8."
+            },
+            "hashType": {
+              "type": "string",
+              "enum": ["sha256", "merkle-sha256"],
+              "description": "Hash algorithm used. 'sha256' for single-resource flat hash, 'merkle-sha256' for Merkle tree root."
+            },
+            "leafCount": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Number of governed resources. 1 for flat hash, 2+ for Merkle tree."
+            },
+            "agentId": {
+              "type": "string",
+              "description": "AGRN agent identifier (e.g., 'agent.trading-bot-v2')."
+            },
+            "traceId": {
+              "type": "string",
+              "description": "Distributed trace ID. Correlation key across AIGP events, OTel spans, and OpenLineage runs."
+            },
+            "enforcementResult": {
+              "type": "string",
+              "enum": ["allowed", "denied"],
+              "description": "Whether the governance check passed or was denied."
+            },
+            "dataClassification": {
+              "type": "string",
+              "enum": ["public", "internal", "confidential", "restricted"],
+              "description": "Highest data classification level among governed resources."
+            },
+            "specVersion": {
+              "type": "string",
+              "description": "AIGP specification version this facet conforms to.",
+              "default": "0.5.0"
+            }
+          },
+          "required": ["governanceHash", "hashType", "agentId", "traceId"],
+          "additionalProperties": true
+        }
+      ],
+      "type": "object"
+    }
+  },
+  "type": "object",
+  "properties": {
+    "aigp_governance": {
+      "$ref": "#/$defs/AIGPGovernanceRunFacet"
+    }
+  }
+}

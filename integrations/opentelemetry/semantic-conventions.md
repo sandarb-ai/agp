@@ -116,6 +116,17 @@ When `hash_type` is `"merkle-sha256"`, the governance hash is a Merkle root comp
 
 The full Merkle tree structure (leaf hashes, resource names, resource types) is carried in the AIGP event's `governance_merkle_tree` field rather than as OTel span attributes, to avoid excessive attribute cardinality in observability backends. The `leaf_count` attribute provides sufficient signal for dashboards and alerts (e.g., "alert when leaf_count > 10" or "histogram of resources per governance action").
 
+### 3.7 Context and Lineage Resource Attributes
+
+When governance operations include context or lineage resources, implementations SHOULD use the array-valued attributes:
+
+| Attribute | Type | Required | Description | Example |
+|---|---|---|---|---|
+| `aigp.contexts.names` | String[] | Conditional | Governed context resource names. Present when context resources participate in the governance action. | `["context.env-config", "context.runtime-params"]` |
+| `aigp.lineages.names` | String[] | Conditional | Governed lineage resource names. Present when lineage snapshots participate in the governance action. | `["lineage.upstream-orders", "lineage.credit-scores"]` |
+
+Context resources capture general pre-execution state (env config, runtime params). Lineage resources capture data lineage snapshots (upstream dataset provenance, DAG state). Both participate in the Merkle tree alongside policies, prompts, and tools. The `aigp.governance.merkle.leaf_count` attribute reflects the total count including context and lineage leaves.
+
 ---
 
 ## 4. Span Events

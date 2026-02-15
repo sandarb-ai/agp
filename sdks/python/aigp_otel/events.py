@@ -54,17 +54,17 @@ def compute_leaf_hash(
     content produce different leaf hashes.
 
     Args:
-        resource_type: One of "policy", "prompt", "tool".
+        resource_type: One of "policy", "prompt", "tool", "context", "lineage".
         resource_name: AGRN-format name (e.g., "policy.trading-limits").
         content: The governed content string.
 
     Returns:
         Lowercase hexadecimal hash string (64 chars, SHA-256).
     """
-    if resource_type not in ("policy", "prompt", "tool"):
+    if resource_type not in ("policy", "prompt", "tool", "context", "lineage"):
         raise ValueError(
             f"Invalid resource_type: {resource_type}. "
-            "Must be 'policy', 'prompt', or 'tool'."
+            "Must be 'policy', 'prompt', 'tool', 'context', or 'lineage'."
         )
     prefixed = f"{resource_type}:{resource_name}:{content}"
     return hashlib.sha256(prefixed.encode("utf-8")).hexdigest()
